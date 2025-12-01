@@ -1,7 +1,6 @@
-
 import SwiftUI
 
-struct NavigationOptionsView: View {  // Changed from CampusMapView
+struct NavigationOptionsView: View {
     let data: CampusMapData
     @State private var dragOffset: CGSize = .zero
     @State private var lastDragValue: DragGesture.Value?
@@ -14,16 +13,13 @@ struct NavigationOptionsView: View {  // Changed from CampusMapView
             let viewAspect = geo.size.width / geo.size.height
 
             // Fit the map image inside the view, preserving aspect ratio
-            let fittedWidth: CGFloat
-            let fittedHeight: CGFloat
-
-            if imageAspect > viewAspect {
-                fittedWidth = geo.size.width
-                fittedHeight = geo.size.width / imageAspect
-            } else {
-                fittedHeight = geo.size.height
-                fittedWidth = geo.size.height * imageAspect
-            }
+            let fittedSize = calculateFittedSize(
+                imageAspect: imageAspect,
+                viewAspect: viewAspect,
+                geoSize: geo.size
+            )
+            let fittedWidth = fittedSize.width
+            let fittedHeight = fittedSize.height
 
             let scaleX = fittedWidth / mapW
             let scaleY = fittedHeight / mapH
@@ -65,6 +61,18 @@ struct NavigationOptionsView: View {  // Changed from CampusMapView
             }
             .frame(width: geo.size.width, height: geo.size.height)
             .clipped()
+        }
+    }
+    
+    private func calculateFittedSize(imageAspect: CGFloat, viewAspect: CGFloat, geoSize: CGSize) -> CGSize {
+        if imageAspect > viewAspect {
+            let width = geoSize.width
+            let height = width / imageAspect
+            return CGSize(width: width, height: height)
+        } else {
+            let height = geoSize.height
+            let width = height * imageAspect
+            return CGSize(width: width, height: height)
         }
     }
 }
