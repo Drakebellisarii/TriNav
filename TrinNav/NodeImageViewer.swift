@@ -6,50 +6,32 @@ struct NodeImageViewer: View {
 
     var body: some View {
         ZStack {
-            // Semi-transparent background
+            // Dimmed background, closes on tap
             Color.black.opacity(0.8)
                 .ignoresSafeArea()
+                .contentShape(Rectangle())
                 .onTapGesture { onClose() }
 
-            // Image viewer card
-            VStack(spacing: 16) {
-                // Front image
-                imageView(for: node.frontImageName)
-                
-                // Back image
-                imageView(for: node.backImageName)
-            }
-            .padding()
-            .background(Color.white)
-            .cornerRadius(15)
-            .shadow(radius: 20)
-            .padding(30)
-        }
-    }
-    
-    @ViewBuilder
-    private func imageView(for imageName: String?) -> some View {
-        if let name = imageName, UIImage(named: name) != nil {
-            Image(name)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(maxHeight: 300)
-        } else {
-            // Placeholder when image doesn't exist
-            ZStack {
-                Rectangle()
-                    .fill(Color.gray.opacity(0.3))
-                    .frame(height: 200)
-
-                VStack(spacing: 12) {
-                    Image(systemName: "photo")
-                        .font(.system(size: 40))
-                        .foregroundColor(.gray)
-
-                    Text("No image")
-                        .font(.caption)
-                        .foregroundColor(.gray)
+            // Locked-horizontal panorama viewer
+            PanoramaView(imageName: node.imageName ?? "")
+                .cornerRadius(15)
+                .shadow(radius: 20)
+                .padding(30)
+            
+            // Close button
+            VStack {
+                HStack {
+                    Spacer()
+                    Button(action: onClose) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 30))
+                            .foregroundColor(.white)
+                            .padding()
+                            .contentShape(Rectangle())
+                            .accessibilityLabel("Close panorama")
+                    }
                 }
+                Spacer()
             }
         }
     }

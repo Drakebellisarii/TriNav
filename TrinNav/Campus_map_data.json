@@ -7,121 +7,181 @@
             "id": 1,
             "pixelX": 300,
             "pixelY": 350,
-            "frontImageName": "Landmarks",
-            "backImageName": "Landmarks",
-            "latitude": 41.7658,
-            "longitude": -72.6734,
-            "name": "North Start"
+            "imageName": "GP604BK",
+            "latitude": 41.75093,
+            "longitude": -72.69307,
+            "connections": [
+                { "to": 2 }
+            ]
         },
         {
             "id": 2,
             "pixelX": 300,
             "pixelY": 50,
-            "frontImageName": "GP604FR",
-            "backImageName": "GP604BK",
-            "latitude": 41.7658,
-            "longitude": -72.6734,
-            "name": "West Path Point 1"
+            "imageName": "GP604FR",
+            "latitude": 41.75315,
+            "longitude": -72.69307,
+            "connections": [
+                { "to": 1 },
+                { "to": 3 }
+            ]
         },
         {
             "id": 3,
             "pixelX": 300,
             "pixelY": -350,
-            "frontImageName": "GP604",
-            "backImageName": "GP604",
-            "latitude": 41.7658,
-            "longitude": -72.6734,
-            "name": "West Path Point 2"
+            "imageName": "Corner",
+            "latitude": 41.75647,
+            "longitude": -72.69307,
+            "name": "Corner",
+            "connections": [
+                { "to": 2 },
+                { "to": 4 }
+            ]
         },
         {
             "id": 4,
             "pixelX": 300,
             "pixelY": -750,
-            "frontImageName": "library_entrance",
-            "backImageName": "Landmarks",
-            "latitude": 41.7658,
-            "longitude": -72.6734,
-            "name": "Southwest Corner"
+            "imageName": "library_entrance",
+            "latitude": 41.75942,
+            "longitude": -72.69307,
+            "name": "Library Entrance",
+            "connections": [
+                { "to": 3 },
+                { "to": 5 }
+            ]
         },
         {
             "id": 5,
             "pixelX": 700,
             "pixelY": -750,
-            "frontImageName": "library_entrance",
-            "backImageName": "Landmarks",
-            "latitude": 41.7658,
-            "longitude": -72.6734,
-            "name": "South Path Point 1"
+            "imageName": "library_entrance",
+            "latitude": 41.75942,
+            "longitude": -72.69144,
+            "connections": [
+                { "to": 4 },
+                { "to": 6 }
+            ]
         },
         {
             "id": 6,
             "pixelX": 1100,
             "pixelY": -750,
-            "frontImageName": "library_entrance",
-            "backImageName": "Landmarks",
-            "latitude": 41.7658,
-            "longitude": -72.6734,
-            "name": "South Path Point 2"
+            "imageName": "library_entrance",
+            "latitude": 41.75942,
+            "longitude": -72.68981,
+            "connections": [
+                { "to": 5 },
+                { "to": 7 }
+            ]
         },
         {
             "id": 7,
             "pixelX": 1500,
             "pixelY": -750,
-            "frontImageName": "library_entrance",
-            "backImageName": "Landmarks",
-            "latitude": 41.7658,
-            "longitude": -72.6734,
-            "name": "South Path Point 3"
+            "imageName": "library_entrance",
+            "latitude": 41.75942,
+            "longitude": -72.68818,
+            "connections": [
+                { "to": 6 },
+                { "to": 8 }
+            ]
         },
         {
             "id": 8,
             "pixelX": 1750,
             "pixelY": -750,
-            "frontImageName": "library_entrance",
-            "backImageName": "Landmarks",
-            "latitude": 41.7658,
-            "longitude": -72.6734,
-            "name": "Southeast Corner"
+            "imageName": "library_entrance",
+            "latitude": 41.75942,
+            "longitude": -72.68716,
+            "connections": [
+                { "to": 7 },
+                { "to": 9 }
+            ]
         },
         {
             "id": 9,
             "pixelX": 1750,
             "pixelY": -450,
-            "frontImageName": "library_entrance",
-            "backImageName": "Landmarks",
-            "latitude": 41.7658,
-            "longitude": -72.6734,
-            "name": "East Path Point 1"
+            "imageName": "library_entrance",
+            "latitude": 41.75721,
+            "longitude": -72.68716,
+            "connections": [
+                { "to": 8 },
+                { "to": 10 }
+            ]
         },
         {
             "id": 10,
             "pixelX": 1750,
             "pixelY": -150,
-            "frontImageName": "library_entrance",
-            "backImageName": "Landmarks",
-            "latitude": 41.7658,
-            "longitude": -72.6734,
-            "name": "East Path Point 2"
+            "imageName": "library_entrance",
+            "latitude": 41.75500,
+            "longitude": -72.68716,
+            "connections": [
+                { "to": 9 },
+                { "to": 11 }
+            ]
         },
         {
             "id": 11,
             "pixelX": 1750,
             "pixelY": 150,
-            "frontImageName": "library_entrance",
-            "backImageName": "Landmarks",
-            "latitude": 41.7658,
-            "longitude": -72.6734,
-            "name": "Northeast Corner"
+            "imageName": "library_entrance",
+            "latitude": 41.75279,
+            "longitude": -72.68716,
+            "connections": [
+                { "to": 10 },
+                { "to": 12 }
+            ]
         },
         {
             "id": 12,
             "pixelX": 1750,
             "pixelY": 600,
-            "frontImageName": "library_entrance",
-            "backImageName": "Landmarks",
-            "latitude": 41.7658,
-            "longitude": -72.6734,
-            "name": "Northeast Corner"
+            "imageName": "library_entrance",
+            "latitude": 41.74947,
+            "longitude": -72.68716,
+            "connections": [
+                { "to": 11 }
+            ]
+        },
+        {
+            "id": 13,
+            "pixelX": 1750,
+            "pixelY": 1050,
+            "imageName": "library_entrance",
+            "latitude": 41.74615,
+            "longitude": -72.68716,
+            "name": "Funston Hall",
+            "connections": [
+                { "to": 12 }
+            ]
+        },
+        {
+            "id": 14,
+            "pixelX": 1750,
+            "pixelY": 1500,
+            "imageName": "library_entrance",
+            "latitude": 41.74284,
+            "longitude": -72.68716,
+            "name": "Jones Hall",
+            "connections": [
+                { "to": 12 }
+            ]
+        },
+        {
+            "id": 15,
+            "pixelX": 1750,
+            "pixelY": 1950,
+            "imageName": "library_entrance",
+            "latitude": 41.73952,
+            "longitude": -72.68716,
+            "name": "Mather Hall",
+            "connections": [
+                { "to": 12 }
+            ]
         }
     ]
 }
