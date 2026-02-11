@@ -14,6 +14,7 @@ struct MapNode: Identifiable, Codable, Hashable {
     let latitude: Double?
     let longitude: Double?
     let name: String?
+    let description: String?
 }
 
 struct CampusMapData: Codable {

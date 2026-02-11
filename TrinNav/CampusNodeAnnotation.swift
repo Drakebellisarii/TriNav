@@ -5,6 +5,7 @@
 //  Created by Drake Bellisari on 12/18/25.
 //
 import MapKit
+import SwiftUI
 
 final class CampusNodeAnnotation: NSObject, MKAnnotation {
     let node: MapNode

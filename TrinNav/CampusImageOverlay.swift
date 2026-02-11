@@ -5,7 +5,7 @@
 //  Created by Drake Bellisari on 12/17/25.
 //
 import MapKit
-import UIKit
+import SwiftUI
 
 final class CampusImageOverlay: NSObject, MKOverlay {
     let boundingMapRect: MKMapRect

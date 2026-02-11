@@ -54,7 +54,8 @@ struct DestinationPicker: View {
                         imageName: "Landmarks",
                         latitude: 41.7658,
                         longitude: -72.6734,
-                        name: "North Start"
+                        name: "North Start",
+                        description: "Lit"
                     ),
                     allDestinations: [
                         MapNode(
@@ -64,7 +65,9 @@ struct DestinationPicker: View {
                             imageName: "GP604_360",
                             latitude: 41.7658,
                             longitude: -72.6734,
-                            name: "West Path Point 1"
+                            name: "West Path Point 1",
+                            description: "Lit"
+
                         ),
                         MapNode(
                             id: 4,
@@ -73,7 +76,8 @@ struct DestinationPicker: View {
                             imageName: "library_entrance",
                             latitude: 41.7658,
                             longitude: -72.6734,
-                            name: "Southwest Corner"
+                            name: "Southwest Corner",
+                            description: "Lit"
                         )
                     ],
                     onSelect: { node in

@@ -1,5 +1,7 @@
 import SceneKit
+import SwiftUI
 import UIKit
+
 
 class SceneManager {
     let scene = SCNScene()

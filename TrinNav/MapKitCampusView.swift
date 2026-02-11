@@ -2,40 +2,42 @@ import SwiftUI
 import MapKit
 
 struct MapKitCampusView: View {
-
+    
     let nodes: [MapNode]
     @Binding var isViewingNode: Bool
-
+    
     @State private var selectedNode: MapNode?
     @State private var showMenu = false
     @State private var searchText = ""
     @State private var isSearchFocused = false
     @State private var filteredNodes: [MapNode] = []
+    @State private var previewNode: MapNode? = nil
+    
     
     private let defaultRegion = MKCoordinateRegion(
         center: CLLocationCoordinate2D(
-                latitude: 41.7480,
-                longitude: -72.6899
-            ),
-            span: MKCoordinateSpan(
-                latitudeDelta: 0.010,
-                longitudeDelta: 0.010
-            )
+            latitude: 41.7480,
+            longitude: -72.6899
+        ),
+        span: MKCoordinateSpan(
+            latitudeDelta: 0.010,
+            longitudeDelta: 0.010
+        )
     )
-
+    
     @State private var region: MKCoordinateRegion
-
-       init(nodes: [MapNode], isViewingNode: Binding<Bool>) {
-           self.nodes = nodes
-           self._isViewingNode = isViewingNode
-           _region = State(initialValue: defaultRegion)
-       }
-   
-
+    
+    init(nodes: [MapNode], isViewingNode: Binding<Bool>) {
+        self.nodes = nodes
+        self._isViewingNode = isViewingNode
+        _region = State(initialValue: defaultRegion)
+    }
+    
+    
     // Trinity Branding
     private let trinityNavy = Color(red: 0.0, green: 0.255, blue: 0.474)
     private let trinityGold = Color(red: 0.953, green: 0.769, blue: 0.016)
-
+    
     // Campus Overlay
     private var campusOverlay: CampusImageOverlay {
         CampusImageOverlay(
@@ -44,14 +46,14 @@ struct MapKitCampusView: View {
             bottomRight: CLLocationCoordinate2D(latitude: 41.74247, longitude: -72.68613)
         )
     }
-
+    
     private var isImmersiveActive: Bool {
         isViewingNode && (selectedNode?.imageName != nil)
     }
-
+    
     var body: some View {
         VStack(spacing: 0) {
-
+            
             // HEADER (always visible)
             ZStack {
                 LinearGradient(
@@ -60,7 +62,7 @@ struct MapKitCampusView: View {
                     endPoint: .bottomTrailing
                 )
                 .ignoresSafeArea(edges: .top)
-
+                
                 HStack {
                     Button {
                         withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
@@ -72,9 +74,9 @@ struct MapKitCampusView: View {
                             .foregroundColor(.white)
                             .frame(width: 44, height: 44)
                     }
-
+                    
                     Spacer()
-
+                    
                     HStack(spacing: 8) {
                         Circle()
                             .fill(trinityGold)
@@ -84,14 +86,14 @@ struct MapKitCampusView: View {
                                     .font(.system(size: 18, weight: .black, design: .serif))
                                     .foregroundColor(.white)
                             )
-
+                        
                         Text("TriNav")
                             .font(.system(size: 16, weight: .bold, design: .rounded))
                             .foregroundColor(.white)
                     }
-
+                    
                     Spacer()
-
+                    
                     Image(systemName: "location.fill")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(trinityGold)
@@ -103,21 +105,21 @@ struct MapKitCampusView: View {
             }
             .frame(height: 60)
             .shadow(color: .black.opacity(0.2), radius: 10, y: 5)
-
+            
             // SEARCH BAR (hidden during immersive)
             if !isImmersiveActive {
                 HStack(spacing: 12) {
                     Image(systemName: "magnifyingglass")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(trinityNavy.opacity(0.6))
-
+                    
                     TextField("Search buildings, locations...", text: $searchText)
                         .font(.system(size: 15, weight: .medium))
                         .foregroundColor(trinityNavy)
                         .onChange(of: searchText) { _, value in
                             filterNodes(with: value)
                         }
-
+                    
                     if !searchText.isEmpty {
                         Button {
                             searchText = ""
@@ -135,7 +137,7 @@ struct MapKitCampusView: View {
                 .background(Color.white)
                 .shadow(color: .black.opacity(0.1), radius: 8, y: 2)
             }
-
+            
             // SEARCH RESULTS (hidden during immersive)
             if !isImmersiveActive && isSearchFocused && !filteredNodes.isEmpty {
                 ScrollView {
@@ -146,19 +148,19 @@ struct MapKitCampusView: View {
                                     .font(.system(size: 20))
                                     .foregroundColor(trinityNavy)
                                     .frame(width: 40)
-
+                                
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(node.name ?? "Unknown")
                                         .font(.system(size: 16, weight: .semibold))
                                         .foregroundColor(trinityNavy)
-
+                                    
                                     Text("Campus Building")
                                         .font(.system(size: 13))
                                         .foregroundColor(.gray)
                                 }
-
+                                
                                 Spacer()
-
+                                
                                 Image(systemName: "chevron.right")
                                     .font(.system(size: 14, weight: .semibold))
                                     .foregroundColor(trinityGold)
@@ -167,9 +169,12 @@ struct MapKitCampusView: View {
                             .padding(.vertical, 12)
                             .contentShape(Rectangle())
                             .onTapGesture {
-                                selectNodeAndFocus(node) // only focus
+                                // Show preview card instead of immediately focusing
+                                previewNode = node
+                                isSearchFocused = false
+                                filteredNodes = []
                             }
-
+                            
                             if node.id != filteredNodes.prefix(6).last?.id {
                                 Divider().padding(.leading, 68)
                             }
@@ -180,7 +185,7 @@ struct MapKitCampusView: View {
                 .background(Color.white)
                 .shadow(color: .black.opacity(0.1), radius: 8, y: 2)
             }
-
+            
             // MAP AREA (panorama overlays only this area)
             ZStack {
                 CampusMapView(
@@ -194,7 +199,7 @@ struct MapKitCampusView: View {
                     }
                 )
                 .ignoresSafeArea(edges: .bottom)
-
+                
                 if showMenu {
                     MapKitSideMenu(
                         isShowing: $showMenu,
@@ -203,13 +208,13 @@ struct MapKitCampusView: View {
                     )
                     .transition(.move(edge: .leading))
                 }
-
+                
                 // Immersive overlay inside MAP AREA
                 if isImmersiveActive, let imageName = selectedNode?.imageName {
                     ZStack {
                         PanoramaView(imageName: imageName)
                             .ignoresSafeArea(edges: .bottom)
-
+                        
                         // Dim overlay improves contrast for the X
                         LinearGradient(
                             colors: [Color.black.opacity(0.45), Color.clear],
@@ -218,7 +223,7 @@ struct MapKitCampusView: View {
                         )
                         .ignoresSafeArea(edges: .bottom)
                         .allowsHitTesting(false)
-
+                        
                         // X button (top-right of the MAP AREA)
                         VStack {
                             HStack {
@@ -241,26 +246,60 @@ struct MapKitCampusView: View {
                     .zIndex(999)
                 }
             }
+            .overlay(alignment: .bottom) {
+                if let preview = previewNode, !isImmersiveActive {
+                    PreviewInfoCard(
+                        node: preview,
+                        trinityNavy: trinityNavy,
+                        trinityGold: trinityGold,
+                        onDismiss: {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                previewNode = nil
+                            }
+                            // Clear search UI and dismiss keyboard when closing the preview
+                            dismissSearchUI()
+                        },
+                        onFocus: {
+                            withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                                selectNodeAndFocus(preview)
+                                previewNode = nil
+                            }
+                            // Extra safety: clear search and hide keyboard in case state gets out of sync
+                            dismissSearchUI()
+                        },
+                        onViewPanorama: {
+                            selectedNode = preview
+                            isViewingNode = true
+                            dismissSearchUI()
+                            previewNode = nil
+                        }
+                    )
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 12)
+                }
+            }
+            
         }
     }
-
+    
     // MARK: Logic
-
+    
     private func closeImmersive() {
         isViewingNode = false
         selectedNode = nil
-
+        
         // Reset map to campus overview
         withAnimation(.spring(response: 0.55, dampingFraction: 0.9)) {
             region = defaultRegion
         }
     }
-
+    
     private func dismissSearchUI() {
         searchText = ""
         filteredNodes = []
         isSearchFocused = false
-
+        
         UIApplication.shared.sendAction(
             #selector(UIResponder.resignFirstResponder),
             to: nil,
@@ -268,7 +307,7 @@ struct MapKitCampusView: View {
             for: nil
         )
     }
-
+    
     private func filterNodes(with text: String) {
         if text.isEmpty {
             filteredNodes = []
@@ -278,12 +317,16 @@ struct MapKitCampusView: View {
                 ($0.name ?? "").localizedCaseInsensitiveContains(text)
             }
             isSearchFocused = true
+            
+            
         }
     }
-
+    
+    
     private func selectNodeAndFocus(_ node: MapNode) {
         guard let lat = node.latitude, let lon = node.longitude else { return }
-
+        
+        
         withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
             region.center = CLLocationCoordinate2D(latitude: lat, longitude: lon)
             region.span = MKCoordinateSpan(latitudeDelta: 0.002, longitudeDelta: 0.002)
@@ -291,7 +334,7 @@ struct MapKitCampusView: View {
             filteredNodes = []
             isSearchFocused = false
         }
-
+        
         UIApplication.shared.sendAction(
             #selector(UIResponder.resignFirstResponder),
             to: nil,
@@ -299,148 +342,239 @@ struct MapKitCampusView: View {
             for: nil
         )
     }
-}
-
-// Your other views unchanged below
-
-struct MapKitSideMenu: View {
-    @Binding var isShowing: Bool
-    let trinityNavy: Color
-    let trinityGold: Color
-
-    var body: some View {
-        ZStack(alignment: .leading) {
-            Color.black.opacity(0.35)
-                .ignoresSafeArea()
-                .onTapGesture {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                        isShowing = false
-                    }
-                }
-
-            VStack(alignment: .leading, spacing: 0) {
-
-                HStack {
-                    Text("Menu")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundColor(trinityNavy)
-
-                    Spacer()
-
-                    Button {
+    
+    
+    // Your other views unchanged below
+    
+    struct MapKitSideMenu: View {
+        @Binding var isShowing: Bool
+        let trinityNavy: Color
+        let trinityGold: Color
+        
+        var body: some View {
+            ZStack(alignment: .leading) {
+                Color.black.opacity(0.35)
+                    .ignoresSafeArea()
+                    .onTapGesture {
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                             isShowing = false
                         }
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 18, weight: .semibold))
+                    }
+                
+                VStack(alignment: .leading, spacing: 0) {
+                    
+                    HStack {
+                        Text("Menu")
+                            .font(.system(size: 28, weight: .bold, design: .rounded))
                             .foregroundColor(trinityNavy)
-                            .frame(width: 40, height: 40)
+                        
+                        Spacer()
+                        
+                        Button {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                isShowing = false
+                            }
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(trinityNavy)
+                                .frame(width: 40, height: 40)
+                        }
                     }
-                }
-                .padding(24)
-
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 0) {
-                        MapKitMenuItemView(icon: "house.fill", title: "Campus Overview", trinityNavy: trinityNavy)
-                        MapKitMenuItemView(icon: "bookmark.fill", title: "Saved Locations", trinityNavy: trinityNavy)
-                        MapKitMenuItemView(icon: "square.stack.3d.up.fill", title: "Map Layers", trinityNavy: trinityNavy)
-
-                        Divider()
-                            .padding(.vertical, 16)
-                            .padding(.horizontal, 24)
-
-                        Text("CATEGORIES")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 24)
-                            .padding(.bottom, 8)
-
-                        MapKitMenuCategoryView(title: "Academic Buildings")
-                        MapKitMenuCategoryView(title: "Residential Halls")
-                        MapKitMenuCategoryView(title: "Athletics")
-                        MapKitMenuCategoryView(title: "Dining")
-                        MapKitMenuCategoryView(title: "Libraries")
+                    .padding(24)
+                    
+                    ScrollView(showsIndicators: false) {
+                        VStack(spacing: 0) {
+                            MapKitMenuItemView(icon: "house.fill", title: "Campus Overview", trinityNavy: trinityNavy)
+                            MapKitMenuItemView(icon: "bookmark.fill", title: "Saved Locations", trinityNavy: trinityNavy)
+                            MapKitMenuItemView(icon: "square.stack.3d.up.fill", title: "Map Layers", trinityNavy: trinityNavy)
+                            
+                            Divider()
+                                .padding(.vertical, 16)
+                                .padding(.horizontal, 24)
+                            
+                            Text("CATEGORIES")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 24)
+                                .padding(.bottom, 8)
+                            
+                            MapKitMenuCategoryView(title: "Academic Buildings")
+                            MapKitMenuCategoryView(title: "Residential Halls")
+                            MapKitMenuCategoryView(title: "Athletics")
+                            MapKitMenuCategoryView(title: "Dining")
+                            MapKitMenuCategoryView(title: "Libraries")
+                        }
                     }
+                    
+                    Spacer()
+                    
+                    HStack(spacing: 10) {
+                        Circle()
+                            .fill(trinityGold)
+                            .frame(width: 10, height: 10)
+                        
+                        Text("TriNav")
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundColor(trinityNavy)
+                        
+                        Spacer()
+                    }
+                    .padding(24)
+                    .background(trinityNavy.opacity(0.06))
                 }
-
-                Spacer()
-
-                HStack(spacing: 10) {
-                    Circle()
-                        .fill(trinityGold)
-                        .frame(width: 10, height: 10)
-
-                    Text("TriNav")
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                .frame(width: 290)
+                .background(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24)
+                        .stroke(trinityNavy.opacity(0.12), lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 24))
+                .padding(.leading, 12)
+                .shadow(color: .black.opacity(0.18), radius: 18, y: 8)
+            }
+        }
+    }
+    
+    struct MapKitMenuItemView: View {
+        let icon: String
+        let title: String
+        let trinityNavy: Color
+        
+        var body: some View {
+            Button(action: {}) {
+                HStack(spacing: 14) {
+                    Image(systemName: icon)
+                        .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(trinityNavy)
-
+                        .frame(width: 26)
+                    
+                    Text(title)
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .foregroundColor(.primary)
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 14)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+    }
+    
+    struct MapKitMenuCategoryView: View {
+        let title: String
+        
+        var body: some View {
+            Button(action: {}) {
+                HStack {
+                    Text(title)
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundColor(.secondary)
                     Spacer()
                 }
-                .padding(24)
-                .background(trinityNavy.opacity(0.06))
+                .padding(.horizontal, 24)
+                .padding(.vertical, 12)
+                .contentShape(Rectangle())
             }
-            .frame(width: 290)
+            .buttonStyle(.plain)
+        }
+    }
+    
+    struct PreviewInfoCard: View {
+        let node: MapNode
+        let trinityNavy: Color
+        let trinityGold: Color
+        let onDismiss: () -> Void
+        let onFocus: () -> Void
+        let onViewPanorama: () -> Void
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(node.name ?? "Unknown Building")
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                            .foregroundColor(trinityNavy)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+
+                        if let desc = node.description, !desc.isEmpty {
+                            ScrollView {
+                                Text(desc)
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.leading)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .frame(maxHeight: 240)
+                        } else {
+                            Text("Explore this location on campus.")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.leading)
+                        }
+                    }
+
+                    Spacer()
+
+                    Button(action: onDismiss) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                HStack(spacing: 10) {
+                    Button(action: onFocus) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "scope")
+                            Text("Focus on Map")
+                        }
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.white)
+                        .padding(.vertical, 10)
+                        .padding(.horizontal, 14)
+                        .background(trinityNavy)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+
+                    if node.imageName != nil {
+                        Button(action: onViewPanorama) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "view.3d")
+                                Text("View Panorama")
+                            }
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(trinityNavy)
+                            .padding(.vertical, 10)
+                            .padding(.horizontal, 14)
+                            .background(trinityNavy.opacity(0.08))
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .padding(16)
             .background(.ultraThinMaterial)
             .overlay(
-                RoundedRectangle(cornerRadius: 24)
+                RoundedRectangle(cornerRadius: 16)
                     .stroke(trinityNavy.opacity(0.12), lineWidth: 1)
             )
-            .clipShape(RoundedRectangle(cornerRadius: 24))
-            .padding(.leading, 12)
-            .shadow(color: .black.opacity(0.18), radius: 18, y: 8)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .shadow(color: .black.opacity(0.15), radius: 14, y: 6)
         }
     }
-}
-
-struct MapKitMenuItemView: View {
-    let icon: String
-    let title: String
-    let trinityNavy: Color
-
-    var body: some View {
-        Button(action: {}) {
-            HStack(spacing: 14) {
-                Image(systemName: icon)
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(trinityNavy)
-                    .frame(width: 26)
-
-                Text(title)
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
-                    .foregroundColor(.primary)
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.secondary)
-            }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 14)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-struct MapKitMenuCategoryView: View {
-    let title: String
-
-    var body: some View {
-        Button(action: {}) {
-            HStack {
-                Text(title)
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundColor(.secondary)
-                Spacer()
-            }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 12)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
+    
 }
 

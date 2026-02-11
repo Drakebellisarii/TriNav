@@ -1,4 +1,4 @@
-//
+// 
 //  CampusNodeAnnotationView.swift
 //  TrinNav
 //
@@ -6,6 +6,7 @@
 //
 import MapKit
 import UIKit
+import SwiftUI
 
 final class CampusNodeAnnotationView: MKAnnotationView {
 
