@@ -3,227 +3,28 @@
   "mapWidth": 2000,
   "mapHeight": 1500,
   "nodes": [
-    {
-      "id": 1,
-      "pixelX": 300,
-      "pixelY": 350,
-      "imageName": "GP604BK",
-      "latitude": 41.75093,
-      "longitude": -72.69307,
-      "connections": [{ "to": 2 }]
-    },
-    {
-      "id": 2,
-      "pixelX": 300,
-      "pixelY": 50,
-      "imageName": "GP604FR",
-      "latitude": 41.75315,
-      "longitude": -72.69307,
-      "connections": [{ "to": 1 }, { "to": 3 }]
-    },
-    {
-      "id": 16,
-      "pixelX": 0,
-      "pixelY": 0,
-      "imageName": "GP604FR",
-      "latitude": 41.74867,
-      "longitude": -72.69273,
-      "name": "Jarvis Hall",
-      "connections": [],
-      "description" : "Jarvy is the best dorm on campus, especially c100"
-    },
-    {
-      "id": 17,
-      "pixelX": 0,
-      "pixelY": 0,
-      "imageName": "GP604FR",
-      "latitude": 41.74771,
-      "longitude": -72.69264,
-      "name": "Seabury Hall",
-      "connections": [],
-      "description": "Seabury Hall is a residential building located near the center of campus and is often chosen for its convenience and quieter atmosphere. It is close to academic buildings and dining options, making daily routines easy to manage. The hall tends to attract students who want a balance between social life and personal space. Seabury is known for being dependable, comfortable, and low-stress."
-    },
-    {
-      "id": 18,
-      "pixelX": 0,
-      "pixelY": 0,
-      "imageName": "GP604FR",
-      "latitude": 41.7472,
-      "longitude": -72.6927,
-      "name": "Hamlin Hall",
-      "connections": [],
-      "description": "Hamlin Hall is a residential building that offers a more relaxed and residential feel compared to some of the louder dorms on campus. It is well-located for quick access to classes and nearby residence halls, which helps students stay connected without being overwhelmed. Hamlin often appeals to students who value a calmer environment while still being part of campus life. It is a solid option for both studying and unwinding.Hamlin Hall is a residential building that offers a more relaxed and residential feel compared to some of the louder dorms on campus. It is well-located for quick access to classes and nearby residence halls, which helps students stay connected without being overwhelmed. Hamlin often appeals to students who value a calmer environment while still being part of campus life. It is a solid option for both studying and unwinding."
-    },
-    {
-      "id": 19,
-      "pixelX": 0,
-      "pixelY": 0,
-      "imageName": "GP604FR",
-      "latitude": 41.74725,
-      "longitude": -72.69247,
-      "name": "Cook Hall",
-      "connections": [],
-      "description": "Cook Hall is a residence hall that sits among other student housing, creating a tight-knit residential area on campus. It is commonly associated with strong floor communities and familiar faces. The building’s location makes it easy to meet up with friends and move between dorms. Cook is often described as comfortable, social, and easy to settle into."
-    },
-    {
-      "id": 20,
-      "pixelX": 0,
-      "pixelY": 0,
-      "imageName": "GP604FR",
-      "latitude": 41.74716,
-      "longitude": -72.69144,
-      "name": "Clement Chemistry",
-      "connections": [],
-      "description": "Clement Chemistry is one of the main science buildings on campus and houses chemistry labs, classrooms, and faculty offices. It is a frequent destination for science majors and students taking lab-based courses. The building has a more academic and focused atmosphere, especially during lab hours. Clement plays a major role in Trinity’s science curriculum and research activity."
-    },
+    { "id": 1,  "pixelX": 0, "pixelY": 0, "imageName": "GP604BK", "name": "MECC",                        "latitude": 41.74459,  "longitude": -72.69066,  "connections": [{ "to": 2 }, { "to": 11 }] },
+    { "id": 2,  "pixelX": 0, "pixelY": 0, "imageName": "GP604FR",                                         "latitude": 41.745523, "longitude": -72.690748, "connections": [{ "to": 1 }, { "to": 3 }] },
+    { "id": 3,  "pixelX": 0, "pixelY": 0, "imageName": "GP604FR",                                         "latitude": 41.745485, "longitude": -72.691546, "connections": [{ "to": 2 }, { "to": 4 }] },
+    { "id": 4,  "pixelX": 0, "pixelY": 0, "imageName": "GP604FR",                                         "latitude": 41.746398, "longitude": -72.69215,  "connections": [{ "to": 3 }, { "to": 5 }] },
+    { "id": 5,  "pixelX": 0, "pixelY": 0, "imageName": "GP604FR", "name": "Under Tunnel to Long Walk",   "latitude": 41.747205, "longitude": -72.692563, "connections": [{ "to": 4 }, { "to": 6 }] },
+    { "id": 6,  "pixelX": 0, "pixelY": 0, "imageName": "GP604FR",                                         "latitude": 41.747777, "longitude": -72.6926,   "connections": [{ "to": 5 }, { "to": 7 }] },
+    { "id": 7,  "pixelX": 0, "pixelY": 0, "imageName": "GP604FR",                                         "latitude": 41.74912,  "longitude": -72.69273,  "connections": [{ "to": 6 }, { "to": 8 }] },
+    { "id": 8,  "pixelX": 0, "pixelY": 0, "imageName": "GP604FR", "name": "Under Tunnel by Chapel",      "latitude": 41.749518, "longitude": -72.692317, "connections": [{ "to": 7 }, { "to": 9 }] },
+    { "id": 9,  "pixelX": 0, "pixelY": 0, "imageName": "GP604FR", "name": "Admissions Building Front Door", "latitude": 41.750093, "longitude": -72.691834, "connections": [{ "to": 8 }, { "to": 10 }, { "to": 20 }] },
+    { "id": 10, "pixelX": 0, "pixelY": 0, "imageName": "GP604FR", "name": "Bistro",                      "latitude": 41.750883, "longitude": -72.691122, "connections": [{ "to": 9 }, { "to": 21 }] },
 
-    {
-      "id": 21,
-      "pixelX": 0,
-      "pixelY": 0,
-      "imageName": "GP604FR",
-      "latitude": 41.74515,
-      "longitude": -72.69196,
-      "name": "Smith Hall",
-      "connections": [],
-      "description":"Smith Hall is an academic building that hosts classrooms and offices for various departments. It is centrally located, making it a common stop during the academic day. Students often pass through Smith between classes, and it serves as a practical and functional learning space. The building supports a wide range of coursework and academic activities."
-    },
-    {
-      "id": 22,
-      "pixelX": 0,
-      "pixelY": 0,
-      "imageName": "GP604FR",
-      "latitude": 41.74545,
-      "longitude": -72.69222,
-      "name": "Trinity Hall",
-      "connections": [],
-      "description": "Trinity Hall is one of the core academic buildings on campus and is closely associated with administrative offices and classrooms. It sits near the heart of campus and is a landmark many students recognize early on. Trinity Hall often hosts meetings, lectures, and important campus functions. It plays a central role in both academic and administrative life."
-    },
-    {
-      "id": 23,
-      "pixelX": 0,
-      "pixelY": 0,
-      "imageName": "GP604FR",
-      "latitude": 41.74513,
-      "longitude": -72.69167,
-      "name": "Jackson Hall",
-      "connections": [],
-      "description": "Jackson Hall is an academic building that supports classroom learning and faculty offices. It is part of the academic cluster on campus, making it easy to navigate between classes. Students often associate Jackson with regular lectures and discussion-based courses. The building contributes to the everyday academic rhythm of Trinity."
-    },
-
-    {
-      "id": 24,
-      "pixelX": 0,
-      "pixelY": 0,
-      "imageName": "GP604FR",
-      "latitude": 41.75066,
-      "longitude": -72.69105,
-      "name": "Hanson Hall",
-      "connections": [],
-      "description": "Hanson Hall is a residential building located slightly farther from the busiest parts of campus, offering a quieter living experience. It is often chosen by students who want more personal space while still being connected to campus life. The building has a calm atmosphere that works well for studying and relaxing. Hanson provides a more low-key residential option."
-    },
-    {
-      "id": 25,
-      "pixelX": 0,
-      "pixelY": 0,
-      "imageName": "GP604FR",
-      "latitude": 41.7517,
-      "longitude": -72.69109,
-      "name": "High Rise",
-      "connections": [],
-      "description":"High Rise is one of the most recognizable residence halls on campus due to its height and visibility. It offers unique views of the campus and surrounding area, which many residents appreciate. The building has a strong identity and often feels like its own small community. High Rise is known for being social, memorable, and distinct from other dorms."
-    },
-
-    {
-      "id": 26,
-      "pixelX": 0,
-      "pixelY": 0,
-      "imageName": "GP604FR",
-      "latitude": 41.74375,
-      "longitude": -72.69066,
-      "name": "Faculty Services",
-      "connections": [],
-      "description":"Faculty Services is a functional building that supports faculty and administrative operations. Students typically interact with this space for advising, administrative tasks, or behind-the-scenes academic support. While not a social destination, it plays an important role in keeping campus operations running smoothly. It is a practical and purpose-driven location."
-    },
-
-    {
-      "id": 27,
-      "pixelX": 0,
-      "pixelY": 0,
-      "imageName": "GP604FR",
-      "latitude": 41.74755,
-      "longitude": -72.68902,
-      "name": "Koeppel Community Sports Center",
-      "connections": [],
-      "description":"The Koeppel Community Sports Center is a major hub for athletics, fitness, and recreation on campus. It includes workout facilities, courts, and spaces for both varsity and recreational sports. Many students visit Koeppel daily for training, games, or casual exercise. It is one of the most active and energetic places on campus."
-    },
-    {
-      "id": 28,
-      "pixelX": 0,
-      "pixelY": 0,
-      "imageName": "GP604FR",
-      "latitude": 41.74779,
-      "longitude": -72.68852,
-      "name": "Baseball Field",
-      "connections": [],
-      "description": "The baseball field is home to Trinity’s baseball program and is used for practices and games throughout the season. It is a destination for athletes, fans, and anyone attending games. The field contributes to the athletic culture of campus and becomes especially active during game days. It represents school spirit and competition."
-    },
-    {
-      "id": 29,
-      "pixelX": 0,
-      "pixelY": 0,
-      "imageName": "GP604FR",
-      "latitude": 41.74784,
-      "longitude": -72.68944,
-      "name": "Soccer Field",
-      "connections": [],
-      "description":"The soccer field hosts both practices and competitive matches and is used by athletes and intramural players alike. It is an open, visible space that often draws spectators during games. The field plays an important role in campus athletics and student recreation. It is associated with high energy and team activity."
-    },
-
-    {
-      "id": 30,
-      "pixelX": 0,
-      "pixelY": 0,
-      "imageName": "GP604FR",
-      "latitude": 41.75103,
-      "longitude": -72.68944,
-      "name": "Psi U",
-      "connections": [],
-      "description":"Psi U is a fraternity house located near other Greek life residences on campus. It is often used for social gatherings, meetings, and events within the fraternity community. The building contributes to Trinity’s Greek life culture and social scene. Psi U is typically active during evenings and weekends."
-    },
-    {
-      "id": 31,
-      "pixelX": 0,
-      "pixelY": 0,
-      "imageName": "GP604FR",
-      "latitude": 41.75134,
-      "longitude": -72.68978,
-      "name": "Pike",
-      "connections": [],
-      "description":"Pike is a fraternity house that serves as a social and organizational space for its members. It is part of the Greek life area of campus and hosts events, meetings, and gatherings. The house plays a role in shaping campus social life for those involved in Greek organizations. It is commonly associated with strong internal community."
-    },
-    {
-      "id": 32,
-      "pixelX": 0,
-      "pixelY": 0,
-      "imageName": "GP604FR",
-      "latitude": 41.75099,
-      "longitude": -72.68907,
-      "name": "The Mill",
-      "connections": [],
-      "description":"The Mill is a well-known student gathering spot that often serves food and acts as a casual social space. It is a common place to meet friends, grab a meal, or take a break between classes. The Mill has a relaxed atmosphere and is frequently used throughout the day. It is one of the more recognizable student-centered locations on campus."
-    },
-    {
-      "id": 33,
-      "pixelX": 0,
-      "pixelY": 0,
-      "imageName": "GP604FR",
-      "latitude": 41.74675,
-      "longitude": -72.69255,
-      "name": "Mather",
-      "connections": [],
-      "description":"Mather Hall is widely considered the elite dining hall on campus and is known for its quality, variety, and overall atmosphere. Students often go out of their way to eat at Mather because the food options are consistently better and more diverse than other dining locations. The space feels more polished and social, making it a popular spot to eat with friends rather than just grab a quick meal. For many students, Mather sets the standard for campus dining and becomes the go-to choice when they want something reliably good."
-    }
+    { "id": 11, "pixelX": 0, "pixelY": 0, "imageName": "GP604FR",                                         "latitude": 41.74486,  "longitude": -72.69066,  "connections": [{ "to": 1 },  { "to": 12 }] },
+    { "id": 12, "pixelX": 0, "pixelY": 0, "imageName": "GP604FR",                                         "latitude": 41.74580,  "longitude": -72.69068,  "connections": [{ "to": 11 }, { "to": 13 }] },
+    { "id": 13, "pixelX": 0, "pixelY": 0, "imageName": "GP604FR",                                         "latitude": 41.74621,  "longitude": -72.69073,  "connections": [{ "to": 12 }, { "to": 14 }] },
+    { "id": 14, "pixelX": 0, "pixelY": 0, "imageName": "GP604FR", "name": "Austin Arts",                 "latitude": 41.74652,  "longitude": -72.69094,  "connections": [{ "to": 13 }, { "to": 15 }] },
+    { "id": 15, "pixelX": 0, "pixelY": 0, "imageName": "GP604FR", "name": "Library",                     "latitude": 41.74703,  "longitude": -72.69116,  "connections": [{ "to": 14 }, { "to": 16 }] },
+    { "id": 16, "pixelX": 0, "pixelY": 0, "imageName": "GP604FR",                                         "latitude": 41.74770,  "longitude": -72.69123,  "connections": [{ "to": 15 }, { "to": 17 }] },
+    { "id": 17, "pixelX": 0, "pixelY": 0, "imageName": "GP604FR", "name": "Softball Field",              "latitude": 41.74833,  "longitude": -72.69099,  "connections": [{ "to": 16 }, { "to": 18 }] },
+    { "id": 18, "pixelX": 0, "pixelY": 0, "imageName": "GP604FR",                                         "latitude": 41.74905,  "longitude": -72.69116,  "connections": [{ "to": 17 }, { "to": 19 }] },
+    { "id": 19, "pixelX": 0, "pixelY": 0, "imageName": "GP604FR",                                         "latitude": 41.74946,  "longitude": -72.69120,  "connections": [{ "to": 18 }, { "to": 20 }] },
+    { "id": 20, "pixelX": 0, "pixelY": 0, "imageName": "GP604FR", "name": "Bottom of Admissions",        "latitude": 41.75001,  "longitude": -72.69109,  "connections": [{ "to": 19 }, { "to": 21 }, { "to": 9 }] },
+    { "id": 21, "pixelX": 0, "pixelY": 0, "imageName": "GP604FR", "name": "Side of Bistro",              "latitude": 41.75043,  "longitude": -72.69107,  "connections": [{ "to": 20 }, { "to": 10 }] }
   ]
 }
 

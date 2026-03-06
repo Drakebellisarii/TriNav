@@ -1,3 +1,4 @@
+#if false // Disabled: Non-MapKit path removed
 import SceneKit
 import SwiftUI
 import UIKit
@@ -307,3 +308,5 @@ class SceneManager {
         SCNTransaction.commit()
     }
 }
+#endif
+

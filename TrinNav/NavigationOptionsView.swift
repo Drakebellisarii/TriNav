@@ -1,3 +1,4 @@
+#if false // Disabled: Non-MapKit path removed
 import SwiftUI
 
 struct NavigationOptionsView: View {
@@ -76,3 +77,5 @@ struct NavigationOptionsView: View {
         }
     }
 }
+#endif
+

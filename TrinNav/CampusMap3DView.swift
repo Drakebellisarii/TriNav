@@ -1,3 +1,4 @@
+#if false // Disabled: Non-MapKit path removed
 import SwiftUI
 import SceneKit
 
@@ -104,3 +105,4 @@ struct CampusMap3DView: View {
         }
     }
 }
+#endif

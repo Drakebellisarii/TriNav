@@ -24,6 +24,13 @@ class CampusMapViewModel: ObservableObject {
         do {
             let data = try Data(contentsOf: url)
             let decoded = try JSONDecoder().decode(CampusMapData.self, from: data)
+            #if DEBUG
+            print("✅ Loaded Campus_map_data.json: nodes=\(decoded.nodes.count)")
+            for n in decoded.nodes {
+                let tos = n.connections.map { $0.to }
+                print("   • Node \(n.id) -> \(tos)")
+            }
+            #endif
             DispatchQueue.main.async {
                 self.mapData = decoded
             }
@@ -32,3 +39,4 @@ class CampusMapViewModel: ObservableObject {
         }
     }
 }
+

@@ -7,12 +7,22 @@ struct MapKitCampusView: View {
     @Binding var isViewingNode: Bool
     
     @State private var selectedNode: MapNode?
+    @State private var originNode: MapNode? = nil
+    @State private var destinationNode: MapNode? = nil
     @State private var showMenu = false
-    @State private var searchText = ""
-    @State private var isSearchFocused = false
-    @State private var filteredNodes: [MapNode] = []
-    @State private var previewNode: MapNode? = nil
     
+    @State private var isNavigating = false
+    @State private var routePath: [MapNode] = []
+    @State private var currentStepIndex: Int = 0
+    @State private var showNoPathAlert = false
+    
+    @State private var useAlternatingTestImages = true // Toggle to alternate images during navigation for testing
+    private let testImageA = "TestImageA" // Replace with actual asset name
+    private let testImageB = "TestImageB" // Replace with actual asset name
+    
+    @State private var isAutoPlaying = true
+    @State private var playbackTimer: Timer? = nil
+    private let playbackInterval: TimeInterval = 1.0
     
     private let defaultRegion = MKCoordinateRegion(
         center: CLLocationCoordinate2D(
@@ -94,10 +104,17 @@ struct MapKitCampusView: View {
                     
                     Spacer()
                     
-                    Image(systemName: "location.fill")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(trinityGold)
-                        .frame(width: 44, height: 44)
+                    // Test controls: toggle alternating test images during navigation
+                    Menu {
+                        Button(useAlternatingTestImages ? "Disable Alternating Test Images" : "Enable Alternating Test Images") {
+                            useAlternatingTestImages.toggle()
+                        }
+                    } label: {
+                        Image(systemName: "location.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(trinityGold)
+                            .frame(width: 44, height: 44)
+                    }
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
@@ -106,99 +123,220 @@ struct MapKitCampusView: View {
             .frame(height: 60)
             .shadow(color: .black.opacity(0.2), radius: 10, y: 5)
             
-            // SEARCH BAR (hidden during immersive)
-            if !isImmersiveActive {
-                HStack(spacing: 12) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(trinityNavy.opacity(0.6))
-                    
-                    TextField("Search buildings, locations...", text: $searchText)
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(trinityNavy)
-                        .onChange(of: searchText) { _, value in
-                            filterNodes(with: value)
-                        }
-                    
-                    if !searchText.isEmpty {
-                        Button {
-                            searchText = ""
-                            filteredNodes = []
-                            isSearchFocused = false
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 16))
-                                .foregroundColor(.gray.opacity(0.5))
-                        }
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(Color.white)
-                .shadow(color: .black.opacity(0.1), radius: 8, y: 2)
-            }
-            
-            // SEARCH RESULTS (hidden during immersive)
-            if !isImmersiveActive && isSearchFocused && !filteredNodes.isEmpty {
-                ScrollView {
-                    VStack(spacing: 0) {
-                        ForEach(filteredNodes.prefix(6)) { node in
-                            HStack(spacing: 12) {
-                                Image(systemName: "building.2.fill")
-                                    .font(.system(size: 20))
-                                    .foregroundColor(trinityNavy)
-                                    .frame(width: 40)
-                                
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(node.name ?? "Unknown")
-                                        .font(.system(size: 16, weight: .semibold))
-                                        .foregroundColor(trinityNavy)
-                                    
-                                    Text("Campus Building")
-                                        .font(.system(size: 13))
-                                        .foregroundColor(.gray)
-                                }
-                                
-                                Spacer()
-                                
-                                Image(systemName: "chevron.right")
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundColor(trinityGold)
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 12)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                // Show preview card instead of immediately focusing
-                                previewNode = node
-                                isSearchFocused = false
-                                filteredNodes = []
-                            }
-                            
-                            if node.id != filteredNodes.prefix(6).last?.id {
-                                Divider().padding(.leading, 68)
-                            }
-                        }
-                    }
-                }
-                .frame(maxHeight: 300)
-                .background(Color.white)
-                .shadow(color: .black.opacity(0.1), radius: 8, y: 2)
-            }
-            
             // MAP AREA (panorama overlays only this area)
             ZStack {
                 CampusMapView(
                     overlay: campusOverlay,
-                    nodes: nodes,
-                    region: $region,
+                    nodes: isNavigating ? routePath : nodes,
+                    route: routePath, region: $region,
                     onNodeTap: { node in
-                        selectedNode = node
-                        isViewingNode = true
-                        dismissSearchUI()
+                        if originNode == nil {
+                            originNode = node
+                        } else if destinationNode == nil && node.id != originNode?.id {
+                            destinationNode = node
+                        } else if node.id == destinationNode?.id {
+                            destinationNode = nil
+                        } else if node.id == originNode?.id {
+                            originNode = nil
+                        } else {
+                            // Reset and set new origin
+                            originNode = node
+                            destinationNode = nil
+                        }
                     }
                 )
                 .ignoresSafeArea(edges: .bottom)
+                
+                VStack(spacing: 8) {
+                    HStack(spacing: 8) {
+                        Text("Start:")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.white)
+                        Text(originNode?.name ?? (originNode != nil ? "Node \(originNode!.id)" : "Tap a node"))
+                            .font(.system(size: 12))
+                            .foregroundColor(.white)
+                        Spacer()
+                        Text("End:")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.white)
+                        Text(destinationNode?.name ?? (destinationNode != nil ? "Node \(destinationNode!.id)" : "Tap a node"))
+                            .font(.system(size: 12))
+                            .foregroundColor(.white)
+                        Spacer(minLength: 8)
+                        Button(action: {
+                            if let o = originNode, let d = destinationNode {
+                                let path = shortestPath(from: o, to: d, nodes: nodes)
+                                guard path.count >= 2 else {
+                                    showNoPathAlert = true
+                                    return
+                                }
+                                routePath = path
+                                currentStepIndex = 0
+                                isNavigating = true
+                                // Focus map on the first step without entering immersive
+                                focusOn(path[0])
+                                // Ensure immersive is not shown during navigation panel usage
+                                isViewingNode = false
+                                selectedNode = nil
+                                startAutoPlayback()
+                            }
+                        }) {
+                            Text("Go")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 8)
+                                .background((originNode != nil && destinationNode != nil) ? trinityGold : Color.gray)
+                                .clipShape(Capsule())
+                        }
+                        .disabled(!(originNode != nil && destinationNode != nil))
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color.black.opacity(0.45))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    Spacer()
+                }
+                .padding(.top, 8)
+                .padding(.horizontal, 8)
+                
+                // Mini navigation panel at the bottom when navigating
+                if isNavigating {
+                    VStack {
+                        Spacer()
+                        NavigationMiniPanel(
+                            currentStepText: currentStepDescription(),
+                            progressText: "\(currentStepIndex + 1) of \(routePath.count)",
+                            onClose: { endNavigation() },
+                            onRecenter: { recenterToCurrentStep() },
+                            onNextStep: { advanceStep() }
+                        )
+                        .padding(.horizontal, 12)
+                        .padding(.bottom, 12)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+                }
+                
+                // Remove the embedded image player during navigation
+                // Instead, show immersive fullscreen overlay for navigation images
+                
+                if isNavigating, let imageName = currentImageName() {
+                    // Fullscreen immersive navigation overlay
+                    ZStack {
+                        PanoramaView(imageName: imageName)
+                            .ignoresSafeArea()
+                        
+                        // Overlay with navigation controls
+                        VStack {
+                            HStack {
+                                // Close button
+                                Button {
+                                    endNavigation()
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.system(size: 34, weight: .bold))
+                                        .foregroundColor(.white)
+                                        .shadow(radius: 8)
+                                        .padding(16)
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                Spacer()
+                            }
+                            Spacer()
+                            HStack {
+                                // Previous button (if not at first step)
+                                if currentStepIndex > 0 {
+                                    Button {
+                                        withAnimation {
+                                            let newIndex = currentStepIndex - 1
+                                            if routePath.indices.contains(newIndex) {
+                                                currentStepIndex = newIndex
+                                                focusOn(routePath[newIndex])
+                                                startAutoPlayback()
+                                            }
+                                        }
+                                    } label: {
+                                        Image(systemName: "chevron.left.circle.fill")
+                                            .font(.system(size: 44, weight: .bold))
+                                            .foregroundColor(.white)
+                                            .shadow(radius: 8)
+                                            .padding()
+                                            .contentShape(Rectangle())
+                                    }
+                                    .buttonStyle(.plain)
+                                } else {
+                                    // invisible spacer to keep layout stable
+                                    Spacer()
+                                        .frame(width: 68)
+                                }
+                                
+                                Spacer()
+                                
+                                // Zoom controls
+                                HStack(spacing: 16) {
+                                    Button {
+                                        zoomOut()
+                                    } label: {
+                                        Image(systemName: "minus.magnifyingglass")
+                                            .font(.system(size: 32, weight: .bold))
+                                            .foregroundColor(.white)
+                                            .shadow(radius: 6)
+                                            .padding(8)
+                                            .background(Color.black.opacity(0.25))
+                                            .clipShape(Circle())
+                                    }
+                                    .buttonStyle(.plain)
+
+                                    Button {
+                                        zoomIn()
+                                    } label: {
+                                        Image(systemName: "plus.magnifyingglass")
+                                            .font(.system(size: 32, weight: .bold))
+                                            .foregroundColor(.white)
+                                            .shadow(radius: 6)
+                                            .padding(8)
+                                            .background(Color.black.opacity(0.25))
+                                            .clipShape(Circle())
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                                
+                                // Next button (if not at last step)
+                                if currentStepIndex + 1 < routePath.count {
+                                    Button {
+                                        withAnimation {
+                                            let newIndex = currentStepIndex + 1
+                                            if routePath.indices.contains(newIndex) {
+                                                currentStepIndex = newIndex
+                                                focusOn(routePath[newIndex])
+                                                startAutoPlayback()
+                                            } else {
+                                                endNavigation()
+                                            }
+                                        }
+                                    } label: {
+                                        Image(systemName: "chevron.right.circle.fill")
+                                            .font(.system(size: 44, weight: .bold))
+                                            .foregroundColor(.white)
+                                            .shadow(radius: 8)
+                                            .padding()
+                                            .contentShape(Rectangle())
+                                    }
+                                    .buttonStyle(.plain)
+                                } else {
+                                    // invisible spacer to keep layout stable
+                                    Spacer()
+                                        .frame(width: 68)
+                                }
+                            }
+                            .padding(.horizontal, 30)
+                            .padding(.bottom, 30)
+                        }
+                    }
+                    .transition(.opacity)
+                    .zIndex(1000)
+                }
                 
                 if showMenu {
                     MapKitSideMenu(
@@ -246,44 +384,126 @@ struct MapKitCampusView: View {
                     .zIndex(999)
                 }
             }
-            .overlay(alignment: .bottom) {
-                if let preview = previewNode, !isImmersiveActive {
-                    PreviewInfoCard(
-                        node: preview,
-                        trinityNavy: trinityNavy,
-                        trinityGold: trinityGold,
-                        onDismiss: {
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                                previewNode = nil
-                            }
-                            // Clear search UI and dismiss keyboard when closing the preview
-                            dismissSearchUI()
-                        },
-                        onFocus: {
-                            withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
-                                selectNodeAndFocus(preview)
-                                previewNode = nil
-                            }
-                            // Extra safety: clear search and hide keyboard in case state gets out of sync
-                            dismissSearchUI()
-                        },
-                        onViewPanorama: {
-                            selectedNode = preview
-                            isViewingNode = true
-                            dismissSearchUI()
-                            previewNode = nil
-                        }
-                    )
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .padding(.horizontal, 12)
-                    .padding(.bottom, 12)
-                }
-            }
             
+        }
+        .alert("No connected path", isPresented: $showNoPathAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("There is no connected route between the selected nodes.")
         }
     }
     
     // MARK: Logic
+    
+    private func focusOn(_ node: MapNode) {
+        guard let lat = node.latitude, let lon = node.longitude else { return }
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+            region.center = CLLocationCoordinate2D(latitude: lat, longitude: lon)
+            region.span = MKCoordinateSpan(latitudeDelta: 0.002, longitudeDelta: 0.002)
+        }
+    }
+
+    private func endNavigation() {
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+            isNavigating = false
+        }
+        routePath = []
+        currentStepIndex = 0
+        isAutoPlaying = false
+        stopAutoPlayback()
+    }
+
+    private func recenterToCurrentStep() {
+        guard isNavigating, currentStepIndex < routePath.count else { return }
+        focusOn(routePath[currentStepIndex])
+    }
+
+    private func advanceStep() {
+        guard isNavigating else { return }
+        if currentStepIndex + 1 < routePath.count {
+            currentStepIndex += 1
+            focusOn(routePath[currentStepIndex])
+        } else {
+            endNavigation()
+        }
+    }
+
+    private func currentStepDescription() -> String {
+        guard isNavigating, currentStepIndex < routePath.count else {
+            return "Navigating"
+        }
+        let node = routePath[currentStepIndex]
+        return node.name ?? "Node \(node.id)"
+    }
+    
+    private func currentImageName() -> String? {
+        guard isNavigating, currentStepIndex < routePath.count else { return nil }
+        // For testing, alternate between two images so each step is visually distinct
+        if useAlternatingTestImages {
+            return (currentStepIndex % 2 == 0) ? testImageA : testImageB
+        }
+        // Default behavior: use the node's own image
+        return routePath[currentStepIndex].imageName
+    }
+
+    private func ensureCurrentStepHasImage() {
+        // No-op: we want to traverse every intermediate node in order. The embedded player will simply not show an image when a step lacks one.
+    }
+
+    private func startAutoPlayback() {
+        stopAutoPlayback()
+        isAutoPlaying = true
+        playbackTimer = Timer.scheduledTimer(withTimeInterval: playbackInterval, repeats: true) { _ in
+            advanceToNextImageNode()
+        }
+        RunLoop.main.add(playbackTimer!, forMode: .common)
+    }
+
+    private func stopAutoPlayback() {
+        playbackTimer?.invalidate()
+        playbackTimer = nil
+    }
+
+    private func toggleAutoPlayback() {
+        if isAutoPlaying {
+            isAutoPlaying = false
+            stopAutoPlayback()
+        } else {
+            startAutoPlayback()
+        }
+    }
+
+    private func advanceToNextImageNode() {
+        guard isNavigating else { return }
+        let nextIndex = currentStepIndex + 1
+        if nextIndex < routePath.count {
+            currentStepIndex = nextIndex
+            focusOn(routePath[currentStepIndex])
+        } else {
+            endNavigation()
+        }
+    }
+    
+    private func zoom(by factor: Double) {
+        // factor < 1.0 zooms in, factor > 1.0 zooms out
+        let minDelta = 0.0005
+        let maxDelta = 0.05
+        var newLatDelta = region.span.latitudeDelta * factor
+        var newLonDelta = region.span.longitudeDelta * factor
+        newLatDelta = min(max(newLatDelta, minDelta), maxDelta)
+        newLonDelta = min(max(newLonDelta, minDelta), maxDelta)
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.9)) {
+            region.span = MKCoordinateSpan(latitudeDelta: newLatDelta, longitudeDelta: newLonDelta)
+        }
+    }
+
+    private func zoomIn() {
+        zoom(by: 0.7)
+    }
+
+    private func zoomOut() {
+        zoom(by: 1.3)
+    }
     
     private func closeImmersive() {
         isViewingNode = false
@@ -295,52 +515,166 @@ struct MapKitCampusView: View {
         }
     }
     
-    private func dismissSearchUI() {
-        searchText = ""
-        filteredNodes = []
-        isSearchFocused = false
-        
-        UIApplication.shared.sendAction(
-            #selector(UIResponder.resignFirstResponder),
-            to: nil,
-            from: nil,
-            for: nil
-        )
-    }
-    
-    private func filterNodes(with text: String) {
-        if text.isEmpty {
-            filteredNodes = []
-            isSearchFocused = false
-        } else {
-            filteredNodes = nodes.filter {
-                ($0.name ?? "").localizedCaseInsensitiveContains(text)
-            }
-            isSearchFocused = true
-            
-            
-        }
-    }
-    
-    
     private func selectNodeAndFocus(_ node: MapNode) {
         guard let lat = node.latitude, let lon = node.longitude else { return }
-        
         
         withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
             region.center = CLLocationCoordinate2D(latitude: lat, longitude: lon)
             region.span = MKCoordinateSpan(latitudeDelta: 0.002, longitudeDelta: 0.002)
-            searchText = ""
-            filteredNodes = []
-            isSearchFocused = false
+        }
+    }
+    
+    private func nodeById(_ id: Int, from nodes: [MapNode]) -> MapNode? {
+        return nodes.first { $0.id == id }
+    }
+
+    private func shortestPath(from start: MapNode, to goal: MapNode, nodes: [MapNode]) -> [MapNode] {
+        // Dijkstra's algorithm on a weighted graph where edge weights are geographic distances (meters)
+        // Build quick lookup by id
+        var nodeById: [Int: MapNode] = [:]
+        for n in nodes { nodeById[n.id] = n }
+
+        // Build adjacency list with weights from connections
+        var adj: [Int: [(to: Int, w: Double)]] = [:]
+        for n in nodes {
+            let neighbors = (n.connections ?? []).compactMap { conn -> (Int, Double)? in
+                guard let aLat = n.latitude, let aLon = n.longitude,
+                      let m = nodeById[conn.to], let bLat = m.latitude, let bLon = m.longitude else {
+                    return nil
+                }
+                let w = haversineDistance(lat1: aLat, lon1: aLon, lat2: bLat, lon2: bLon)
+                return (conn.to, w)
+            }
+            adj[n.id] = neighbors
         }
         
-        UIApplication.shared.sendAction(
-            #selector(UIResponder.resignFirstResponder),
-            to: nil,
-            from: nil,
-            for: nil
-        )
+        #if DEBUG
+        let edgeCount = adj.values.reduce(0) { $0 + $1.count }
+        print("[Dijkstra] nodes=\(nodes.count), edges=\(edgeCount)")
+        #endif
+
+        let startId = start.id
+        let goalId = goal.id
+
+        var dist: [Int: Double] = [:]
+        var prev: [Int: Int] = [:]
+        var unvisited: Set<Int> = Set(nodes.map { $0.id })
+
+        for n in nodes { dist[n.id] = Double.greatestFiniteMagnitude }
+        dist[startId] = 0
+
+        while !unvisited.isEmpty {
+            // Pick the unvisited node with smallest distance
+            let u = unvisited.min { (a, b) -> Bool in
+                (dist[a] ?? .infinity) < (dist[b] ?? .infinity)
+            }
+            guard let current = u else { break }
+            unvisited.remove(current)
+
+            if current == goalId { break }
+
+            let currentDist = dist[current] ?? .infinity
+            if currentDist == .infinity { break }
+
+            for (v, w) in adj[current] ?? [] {
+                if !unvisited.contains(v) { continue }
+                let alt = currentDist + w
+                if alt < (dist[v] ?? .infinity) {
+                    dist[v] = alt
+                    prev[v] = current
+                }
+            }
+        }
+
+        // Reconstruct path from goal to start
+        var pathIds: [Int] = []
+        var cur = goalId
+        pathIds.append(cur)
+        while let p = prev[cur] {
+            pathIds.append(p)
+            cur = p
+        }
+        guard pathIds.last == startId else { return [] }
+        pathIds.reverse()
+        return pathIds.compactMap { nodeById[$0] }
+    }
+    
+    private func haversineDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double) -> Double {
+        let R = 6_371_000.0 // Earth radius in meters
+        let dLat = (lat2 - lat1) * .pi / 180
+        let dLon = (lon2 - lon1) * .pi / 180
+        let a = sin(dLat/2) * sin(dLat/2) + cos(lat1 * .pi / 180) * cos(lat2 * .pi / 180) * sin(dLon/2) * sin(dLon/2)
+        let c = 2 * atan2(sqrt(a), sqrt(1 - a))
+        return R * c
+    }
+
+    private func startPOVPlayback(path: [MapNode]) {
+        guard !path.isEmpty else { return }
+        Task { @MainActor in
+            for node in path {
+                if let _ = node.imageName {
+                    selectedNode = node
+                    isViewingNode = true
+                }
+                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5s
+            }
+            // End playback
+            isViewingNode = false
+            selectedNode = nil
+        }
+    }
+    
+    struct NavigationSetupView: View {
+        let nodes: [MapNode]
+        let onStart: (MapNode, MapNode) -> Void
+        @Environment(\.dismiss) private var dismiss
+        @State private var selectedOriginId: Int? = nil
+        @State private var selectedDestinationId: Int? = nil
+        var body: some View {
+            NavigationView {
+                VStack(spacing: 20) {
+                    VStack(alignment: .leading) {
+                        Text("Where are you?").font(.headline)
+                        Picker("Origin", selection: Binding(get: { selectedOriginId ?? nodes.first?.id }, set: { selectedOriginId = $0 })) {
+                            ForEach(nodes, id: \.id) { n in
+                                Text(n.name ?? "Node \(n.id)").tag(Optional(n.id))
+                            }
+                        }
+                        .pickerStyle(.wheel)
+                    }
+                    VStack(alignment: .leading) {
+                        Text("Where would you like to go?").font(.headline)
+                        Picker("Destination", selection: Binding(get: { selectedDestinationId ?? nodes.last?.id }, set: { selectedDestinationId = $0 })) {
+                            ForEach(nodes, id: \.id) { n in
+                                Text(n.name ?? "Node \(n.id)").tag(Optional(n.id))
+                            }
+                        }
+                        .pickerStyle(.wheel)
+                    }
+                    Button {
+                        guard let oId = selectedOriginId ?? nodes.first?.id,
+                              let dId = selectedDestinationId ?? nodes.last?.id,
+                              let origin = nodes.first(where: { $0.id == oId }),
+                              let destination = nodes.first(where: { $0.id == dId }),
+                              origin.id != destination.id else { return }
+                        onStart(origin, destination)
+                        dismiss()
+                    } label: {
+                        Text("Start Navigation")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+                            .padding(.vertical, 12)
+                            .frame(maxWidth: .infinity)
+                            .background(Color.blue)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .padding(.top, 10)
+                    Spacer()
+                }
+                .padding()
+                .navigationTitle("TriNav")
+            }
+        }
     }
     
     
@@ -487,6 +821,124 @@ struct MapKitCampusView: View {
         }
     }
     
+    struct NavigationMiniPanel: View {
+        let currentStepText: String
+        let progressText: String
+        let onClose: () -> Void
+        let onRecenter: () -> Void
+        let onNextStep: () -> Void
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .center) {
+                    Text(currentStepText)
+                        .font(.system(size: 16, weight: .semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                    Spacer()
+                    Button(action: onClose) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 14, weight: .semibold))
+                            .padding(6)
+                            .background(.thinMaterial)
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                HStack(spacing: 12) {
+                    Label(progressText, systemImage: "arrow.triangle.turn.up.right.diamond")
+                        .font(.system(size: 13))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+
+                HStack {
+                    Button(action: onRecenter) {
+                        Label("Recenter", systemImage: "location")
+                    }
+                    .buttonStyle(.borderedProminent)
+
+                    Spacer()
+
+                    Button(action: onNextStep) {
+                        Label("Next", systemImage: "arrow.turn.down.right")
+                    }
+                    .buttonStyle(.bordered)
+                }
+                .font(.system(size: 14, weight: .semibold))
+            }
+            .padding(12)
+            .background(.ultraThinMaterial)
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(Color.black.opacity(0.08), lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
+        }
+    }
+    
+    struct NavigationImagePlayer: View {
+        let imageName: String
+        let isPlaying: Bool
+        let onPlayPause: () -> Void
+        let onNext: () -> Void
+        let onClose: () -> Void
+
+        var body: some View {
+            VStack(spacing: 8) {
+                ZStack(alignment: .topTrailing) {
+                    Image(imageName)
+                        .resizable()
+                        .aspectRatio(16/9, contentMode: .fill)
+                        .frame(width: 320, height: 180)
+                        .clipped()
+                        .background(Color.black.opacity(0.6))
+                        .cornerRadius(12)
+
+                    Button(action: onClose) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 12, weight: .bold))
+                            .padding(6)
+                            .background(.ultraThinMaterial)
+                            .clipShape(Circle())
+                    }
+                    .padding(6)
+                }
+
+                HStack(spacing: 12) {
+                    Button(action: onPlayPause) {
+                        Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                            .font(.system(size: 14, weight: .bold))
+                            .frame(width: 34, height: 34)
+                            .background(.ultraThinMaterial)
+                            .clipShape(Circle())
+                    }
+
+                    Button(action: onNext) {
+                        Image(systemName: "forward.end.fill")
+                            .font(.system(size: 14, weight: .bold))
+                            .frame(width: 34, height: 34)
+                            .background(.ultraThinMaterial)
+                            .clipShape(Circle())
+                    }
+
+                    Spacer()
+                }
+                .padding(.horizontal, 6)
+            }
+            .padding(8)
+            .background(.ultraThinMaterial)
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(Color.black.opacity(0.08), lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
+        }
+    }
+    
     struct PreviewInfoCard: View {
         let node: MapNode
         let trinityNavy: Color
@@ -504,23 +956,6 @@ struct MapKitCampusView: View {
                             .foregroundColor(trinityNavy)
                             .lineLimit(2)
                             .multilineTextAlignment(.leading)
-
-                        if let desc = node.description, !desc.isEmpty {
-                            ScrollView {
-                                Text(desc)
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.secondary)
-                                    .multilineTextAlignment(.leading)
-                                    .fixedSize(horizontal: false, vertical: true)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                            .frame(maxHeight: 240)
-                        } else {
-                            Text("Explore this location on campus.")
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.leading)
-                        }
                     }
 
                     Spacer()

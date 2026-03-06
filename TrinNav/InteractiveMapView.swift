@@ -1,3 +1,4 @@
+#if false // Disabled: Non-MapKit path removed
 import SwiftUI
 
 struct InteractiveMapView: View {
@@ -13,10 +14,7 @@ struct InteractiveMapView: View {
     @State private var lastOffset: CGSize = .zero
     @State private var selectedNode: MapNode? = nil
     @State private var showMenu: Bool = false
-    @State private var searchText: String = ""
     @State private var showLocationInfo: Bool = false
-    @State private var isSearchFocused: Bool = false
-    @State private var filteredNodes: [MapNode] = []
     
     // Trinity Colors
     let trinityNavy = Color(hex: "004179")
@@ -79,46 +77,7 @@ struct InteractiveMapView: View {
                             .shadow(color: .black.opacity(0.1), radius: 8, y: 2)
                     )
                     
-                    // Search Bar
-                    ZStack(alignment: .top) {
-                        Color.white
-                            .frame(height: searchBarHeight)
-                        
-                        HStack {
-                            Image(systemName: "magnifyingglass")
-                                .foregroundColor(trinityNavy.opacity(0.6))
-                            
-                            TextField("Search buildings, locations...", text: $searchText)
-                                .foregroundColor(trinityNavy)
-                                .onChange(of: searchText) { oldValue, newValue in
-                                    filterNodes(with: newValue)
-                                }
-                                .onTapGesture {
-                                    isSearchFocused = true
-                                }
-                            
-                            if !searchText.isEmpty {
-                                Button(action: {
-                                    searchText = ""
-                                    filteredNodes = []
-                                    isSearchFocused = false
-                                }) {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .foregroundColor(trinityNavy.opacity(0.6))
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                        .background(
-                            RoundedRectangle(cornerRadius: 25)
-                                .fill(Color.white)
-                                .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
-                        )
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                    }
-                    .zIndex(10) // Ensure search bar is above map
+                    // Removed Search Bar
                     
                     // Main Map Container
                     ZStack(alignment: .top) {
@@ -154,37 +113,6 @@ struct InteractiveMapView: View {
                         .simultaneousGesture(dragGesture(imageSize: imageSize, containerSize: CGSize(width: geometry.size.width, height: availableHeight)))
                         .frame(width: geometry.size.width, height: availableHeight)
                         .clipped()
-                        .onTapGesture {
-                            if isSearchFocused {
-                                isSearchFocused = false
-                                hideKeyboard()
-                            }
-                        }
-                        .allowsHitTesting(!isSearchFocused) // Disable node interaction when search is focused
-                        
-                        // Search Results Dropdown (overlaid on map)
-                        if isSearchFocused && !filteredNodes.isEmpty {
-                            VStack(spacing: 0) {
-                                ForEach(filteredNodes.prefix(5)) { node in
-                                    SearchResultRow(node: node, searchText: searchText, trinityNavy: trinityNavy)
-                                        .onTapGesture {
-                                            selectNodeAndFocus(node, in: CGSize(width: geometry.size.width, height: availableHeight), imageSize: imageSize)
-                                        }
-                                    
-                                    if node.id != filteredNodes.prefix(5).last?.id {
-                                        Divider()
-                                            .padding(.leading, 50)
-                                    }
-                                }
-                            }
-                            .background(
-                                RoundedRectangle(cornerRadius: 20)
-                                    .fill(Color.white)
-                                    .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
-                            )
-                            .padding(.horizontal, 16)
-                            .padding(.top, 8)
-                        }
                     }
                     
                     Spacer(minLength: 0)
@@ -293,18 +221,7 @@ struct InteractiveMapView: View {
     
     // MARK: - Search Functions
     
-    private func filterNodes(with searchText: String) {
-        if searchText.isEmpty {
-            filteredNodes = []
-            isSearchFocused = false
-        } else {
-            filteredNodes = nodes.filter { node in
-                guard let name = node.name, !name.isEmpty else { return false }
-                return name.lowercased().contains(searchText.lowercased())
-            }
-            isSearchFocused = true
-        }
-    }
+    // Removed filterNodes(with:) and hideKeyboard()
     
     private func selectNode(_ node: MapNode) {
         withAnimation(.spring(response: 0.3)) {
@@ -345,16 +262,8 @@ struct InteractiveMapView: View {
             
             selectedNode = node
             showLocationInfo = true
-            isSearchFocused = false
-            searchText = ""
-            filteredNodes = []
+            // Removed resetting isSearchFocused, searchText, filteredNodes
         }
-        
-        hideKeyboard()
-    }
-    
-    private func hideKeyboard() {
-        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
     
     // MARK: - Gestures
@@ -440,38 +349,7 @@ struct InteractiveMapView: View {
 
 // MARK: - Supporting Views
 
-struct SearchResultRow: View {
-    let node: MapNode
-    let searchText: String
-    let trinityNavy: Color
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "mappin.circle.fill")
-                .font(.system(size: 24))
-                .foregroundColor(trinityNavy.opacity(0.7))
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(node.name ?? "Unknown Location")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(trinityNavy)
-                
-                Text("Building")
-                    .font(.system(size: 13))
-                    .foregroundColor(.gray)
-            }
-            
-            Spacer()
-            
-            Image(systemName: "chevron.right")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(trinityNavy.opacity(0.3))
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(Color.white)
-    }
-}
+// Removed SearchResultRow view
 
 struct NodeMarker: View {
     let node: MapNode
@@ -724,3 +602,5 @@ extension Color {
         )
     }
 }
+#endif
+
