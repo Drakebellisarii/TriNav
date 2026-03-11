@@ -16,6 +16,10 @@ struct MapKitCampusView: View {
     @State private var autoplayTask: Task<Void, Never>? = nil
     @State private var showPOV = false
 
+    @StateObject private var speedService = WalkingSpeedService()
+    @State private var walkingSpeedResult = WalkingSpeedResult(speedMetersPerSecond: 1.4, source: .default)
+    @State private var routeDistanceMeters: Double = 0
+
     private let defaultRegion = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 41.7480, longitude: -72.6899),
         span: MKCoordinateSpan(latitudeDelta: 0.010, longitudeDelta: 0.010)
@@ -50,6 +54,48 @@ struct MapKitCampusView: View {
             topLeft: CLLocationCoordinate2D(latitude: 41.75269, longitude: -72.69435),
             bottomRight: CLLocationCoordinate2D(latitude: 41.74227, longitude: -72.68613)
         )
+    }
+
+    // Route ETA banner shown when a route has been calculated
+    @ViewBuilder
+    private var routeETABanner: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "figure.walk")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.white)
+
+            Text(formattedDistance(routeDistanceMeters))
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundColor(.white)
+
+            Text("·")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundColor(.white.opacity(0.5))
+
+            Image(systemName: "clock.fill")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(trinityGold)
+
+            Text("~\(formattedETA(routeDistanceMeters, walkingSpeedResult.speedMetersPerSecond))")
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundColor(trinityGold)
+
+            Spacer()
+
+            if walkingSpeedResult.source == .healthKit {
+                Text("HealthKit")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.white.opacity(0.6))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(.white.opacity(0.12))
+                    .clipShape(Capsule())
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
+        .background(Color.black.opacity(0.45))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
     var body: some View {
@@ -155,6 +201,7 @@ struct MapKitCampusView: View {
                                 }
                                 routePath = path
                                 currentStepIndex = 0
+                                routeDistanceMeters = totalRouteDistance(path)
                                 fitRoute(path)
                             }
                         }) {
@@ -172,6 +219,12 @@ struct MapKitCampusView: View {
                     .padding(.vertical, 8)
                     .background(Color.black.opacity(0.45))
                     .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                    if !routePath.isEmpty {
+                        routeETABanner
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
+
                     Spacer()
                 }
                 .padding(.top, 8)
@@ -300,6 +353,11 @@ struct MapKitCampusView: View {
                 }
             }
         }
+        .animation(.easeInOut(duration: 0.25), value: routePath.isEmpty)
+        .task {
+            await speedService.requestAuthorization()
+            walkingSpeedResult = await speedService.fetchPredictedWalkingSpeed()
+        }
         .alert("No connected path", isPresented: $showNoPathAlert) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -364,6 +422,7 @@ struct MapKitCampusView: View {
         }
         routePath = []
         currentStepIndex = 0
+        routeDistanceMeters = 0
         withAnimation(.spring(response: 0.55, dampingFraction: 0.9)) {
             region = defaultRegion
         }
@@ -426,6 +485,33 @@ struct MapKitCampusView: View {
 
     private func zoomIn()  { zoom(by: 0.7) }
     private func zoomOut() { zoom(by: 1.3) }
+
+    // MARK: – ETA helpers
+
+    private func totalRouteDistance(_ path: [MapNode]) -> Double {
+        guard path.count >= 2 else { return 0 }
+        return zip(path, path.dropFirst()).reduce(0.0) { total, pair in
+            guard let lat1 = pair.0.latitude, let lon1 = pair.0.longitude,
+                  let lat2 = pair.1.latitude, let lon2 = pair.1.longitude
+            else { return total }
+            return total + haversineDistance(lat1: lat1, lon1: lon1, lat2: lat2, lon2: lon2)
+        }
+    }
+
+    private func formattedETA(_ distanceMeters: Double, _ speedMPS: Double) -> String {
+        guard speedMPS > 0 else { return "–" }
+        let minutes = max(1, Int((distanceMeters / speedMPS / 60).rounded()))
+        if minutes < 60 { return "\(minutes) min" }
+        let hours = minutes / 60
+        let mins  = minutes % 60
+        return mins > 0 ? "\(hours) hr \(mins) min" : "\(hours) hr"
+    }
+
+    private func formattedDistance(_ meters: Double) -> String {
+        meters < 1000
+            ? String(format: "%.0f m", meters)
+            : String(format: "%.1f km", meters / 1000)
+    }
 
     // MARK: – Dijkstra shortest path
 
