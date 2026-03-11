@@ -1,8 +1,5 @@
 import Foundation
-
-#if canImport(HealthKit)
-import HealthKit
-#endif
+import Combine
 
 // MARK: - Models
 
@@ -37,114 +34,23 @@ struct WalkingSpeedResult {
 /// falling back to a profile-based estimate or a safe default.
 final class WalkingSpeedService: ObservableObject {
 
-#if canImport(HealthKit)
+    // HealthKit-free implementation
 
-    private let store = HKHealthStore()
+    /// No-op: HealthKit is not used in this build.
+    func requestAuthorization() async {}
 
-    private var readTypes: Set<HKObjectType> {
-        var types = Set<HKObjectType>()
-        for id: HKQuantityTypeIdentifier in [.height, .bodyMass, .walkingSpeed] {
-            if let t = HKObjectType.quantityType(forIdentifier: id) { types.insert(t) }
-        }
-        if let t = HKObjectType.characteristicType(forIdentifier: .biologicalSex) { types.insert(t) }
-        if let t = HKObjectType.characteristicType(forIdentifier: .dateOfBirth)   { types.insert(t) }
-        return types
-    }
-
-    /// Requests read-only HealthKit authorization for the required data types.
-    func requestAuthorization() async {
-        guard HKHealthStore.isHealthDataAvailable() else { return }
-        try? await store.requestAuthorization(toShare: [], read: readTypes)
-    }
-
-    /// Returns the best available walking speed: measured data first, then estimated.
+    /// Returns an estimated walking speed based on a (possibly empty) profile.
+    /// This never attempts to read HealthKit and always falls back to local estimation.
     func fetchPredictedWalkingSpeed() async -> WalkingSpeedResult {
-        if let measured = await fetchRecentWalkingSpeed() {
-            return WalkingSpeedResult(speedMetersPerSecond: measured, source: .healthKit)
-        }
         let profile = await fetchUserHealthProfile()
         return fallbackWalkingSpeed(from: profile)
     }
 
-    /// Averages walking speed samples from the last 14 days.
-    func fetchRecentWalkingSpeed() async -> Double? {
-        guard let type = HKObjectType.quantityType(forIdentifier: .walkingSpeed) else { return nil }
-        let end   = Date()
-        let start = Calendar.current.date(byAdding: .day, value: -14, to: end) ?? end
-        let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
-        let samples = await fetchSamples(type: type, predicate: predicate, limit: 100)
-        let unit  = HKUnit.meter().unitDivided(by: .second())
-        let speeds = samples.compactMap { ($0 as? HKQuantitySample)?.quantity.doubleValue(for: unit) }
-        guard !speeds.isEmpty else { return nil }
-        return speeds.reduce(0, +) / Double(speeds.count)
-    }
-
-    /// Reads height, body mass, biological sex, and date of birth from HealthKit.
-    func fetchUserHealthProfile() async -> UserHealthProfile {
-        var profile = UserHealthProfile()
-
-        if let type = HKQuantityType.quantityType(forIdentifier: .height),
-           let sample = await fetchMostRecentSample(type: type) as? HKQuantitySample {
-            profile.height = sample.quantity.doubleValue(for: .meter())
-        }
-
-        if let type = HKQuantityType.quantityType(forIdentifier: .bodyMass),
-           let sample = await fetchMostRecentSample(type: type) as? HKQuantitySample {
-            profile.weight = sample.quantity.doubleValue(for: HKUnit.gramUnit(with: .kilo))
-        }
-
-        if let sexObj = try? store.biologicalSex() {
-            switch sexObj.biologicalSex {
-            case .female: profile.biologicalSex = .female
-            case .male:   profile.biologicalSex = .male
-            default:      profile.biologicalSex = .other
-            }
-        }
-
-        if let dob = try? store.dateOfBirthComponents().date {
-            profile.age = Calendar.current.dateComponents([.year], from: dob, to: Date()).year
-        }
-
-        return profile
-    }
-
-    // MARK: Private helpers
-
-    private func fetchSamples(
-        type: HKSampleType,
-        predicate: NSPredicate?,
-        limit: Int
-    ) async -> [HKSample] {
-        await withCheckedContinuation { continuation in
-            let query = HKSampleQuery(
-                sampleType: type,
-                predicate: predicate,
-                limit: limit,
-                sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)]
-            ) { _, samples, _ in
-                continuation.resume(returning: samples ?? [])
-            }
-            store.execute(query)
-        }
-    }
-
-    private func fetchMostRecentSample(type: HKSampleType) async -> HKSample? {
-        await fetchSamples(type: type, predicate: nil, limit: 1).first
-    }
-
-#else   // Non-HealthKit platforms
-
-    func requestAuthorization() async {}
-
-    func fetchPredictedWalkingSpeed() async -> WalkingSpeedResult {
-        fallbackWalkingSpeed(from: UserHealthProfile())
-    }
-
+    /// No HealthKit data available; return nil so callers rely on fallback.
     func fetchRecentWalkingSpeed() async -> Double? { nil }
 
+    /// Provide an empty profile; callers can inject their own profile data if available.
     func fetchUserHealthProfile() async -> UserHealthProfile { UserHealthProfile() }
-
-#endif
 
     // MARK: Fallback (all platforms)
 
@@ -186,4 +92,23 @@ final class WalkingSpeedService: ObservableObject {
             source: .profileEstimate
         )
     }
+
+    // MARK: Formatting Helpers
+    /// Converts a distance in meters to miles.
+    /// - Parameter meters: The distance in meters.
+    /// - Returns: The distance in miles.
+    func miles(from meters: Double) -> Double {
+        meters / 1609.344
+    }
+
+    /// Formats a duration in seconds as mm:ss.
+    /// - Parameter seconds: The duration in seconds.
+    /// - Returns: A string formatted as minutes:seconds (e.g., "07:35").
+    func mmss(from seconds: TimeInterval) -> String {
+        let totalSeconds = max(0, Int(seconds.rounded()))
+        let minutes = totalSeconds / 60
+        let secs = totalSeconds % 60
+        return String(format: "%02d:%02d", minutes, secs)
+    }
 }
+
