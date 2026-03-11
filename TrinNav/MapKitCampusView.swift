@@ -13,6 +13,8 @@ struct MapKitCampusView: View {
     @State private var routePath: [MapNode] = []
     @State private var currentStepIndex: Int = 0
     @State private var showNoPathAlert = false
+    @State private var autoplayTask: Task<Void, Never>? = nil
+    @State private var showPOV = false
 
     private let defaultRegion = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 41.7480, longitude: -72.6899),
@@ -33,12 +35,20 @@ struct MapKitCampusView: View {
     private let trinityNavy = Color(red: 0.0, green: 0.255, blue: 0.474)
     private let trinityGold = Color(red: 0.953, green: 0.769, blue: 0.016)
 
+    private var currentStepImage: UIImage? {
+        guard isNavigating, currentStepIndex < routePath.count else { return nil }
+        let node = routePath[currentStepIndex]
+        if let name = node.imageName { return UIImage(named: name) }
+        return nil
+    }
+
     // Campus Overlay
     private var campusOverlay: CampusImageOverlay {
         CampusImageOverlay(
             image: UIImage(named: "Campus-map")!,
-            topLeft: CLLocationCoordinate2D(latitude: 41.75352, longitude: -72.69430),
-            bottomRight: CLLocationCoordinate2D(latitude: 41.74247, longitude: -72.68613)
+            // Move overlay slightly down by reducing vertical span
+            topLeft: CLLocationCoordinate2D(latitude: 41.75269, longitude: -72.69435),
+            bottomRight: CLLocationCoordinate2D(latitude: 41.74227, longitude: -72.68613)
         )
     }
 
@@ -145,7 +155,6 @@ struct MapKitCampusView: View {
                                 }
                                 routePath = path
                                 currentStepIndex = 0
-                                isNavigating = true
                                 fitRoute(path)
                             }
                         }) {
@@ -195,25 +204,90 @@ struct MapKitCampusView: View {
                             .buttonStyle(.plain)
                         }
                         .padding(.trailing, 16)
-                        .padding(.bottom, isNavigating ? 120 : 16)
+                        .padding(.bottom, 16)
                     }
                 }
 
-                // Mini navigation panel at the bottom when navigating
-                if isNavigating {
-                    VStack {
-                        Spacer()
-                        NavigationMiniPanel(
-                            currentStepText: currentStepDescription(),
-                            progressText: "\(currentStepIndex + 1) of \(routePath.count)",
-                            onClose: { endNavigation() },
-                            onRecenter: { recenterToCurrentStep() },
-                            onNextStep: { advanceStep() }
+                // Floating walkthrough/POV controls
+                VStack {
+                    Spacer()
+                    HStack {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Button(action: {
+                                guard !routePath.isEmpty else { return }
+                                isNavigating = true
+                                startAutoWalk()
+                            }) {
+                                Label("Walk Through", systemImage: "figure.walk")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(trinityGold)
+                            .disabled(routePath.isEmpty)
+
+                            Button(action: {
+                                guard !routePath.isEmpty else { return }
+                                showPOV = true
+                            }) {
+                                Label("POV Walkthrough", systemImage: "view.3d")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(trinityNavy)
+                            .disabled(routePath.isEmpty)
+                        }
+                        .padding(10)
+                        .background(.ultraThinMaterial)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.black.opacity(0.08), lineWidth: 1)
                         )
-                        .padding(.horizontal, 12)
-                        .padding(.bottom, 12)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
+
+                        Spacer()
                     }
+                    .padding(.leading, 16)
+                    .padding(.bottom, 16)
+                }
+
+                // Large image preview during navigation
+                if isNavigating, let img = currentStepImage {
+                    VStack {
+                        HStack {
+                            Spacer()
+                            VStack(alignment: .trailing, spacing: 8) {
+                                if currentStepIndex < routePath.count {
+                                    Text(routePath[currentStepIndex].name ?? "Node \(routePath[currentStepIndex].id)")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundColor(.primary)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 6)
+                                        .background(.ultraThinMaterial)
+                                        .clipShape(Capsule())
+                                }
+                                Image(uiImage: img)
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(width: 340, height: 220)
+                                    .clipped()
+                                    .background(.ultraThinMaterial)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 14)
+                                            .stroke(Color.black.opacity(0.08), lineWidth: 1)
+                                    )
+                                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                    .shadow(color: .black.opacity(0.25), radius: 12, y: 6)
+                            }
+                        }
+                        Spacer()
+                    }
+                    .padding(.top, 72)
+                    .padding(.trailing, 12)
                 }
 
                 if showMenu {
@@ -230,6 +304,19 @@ struct MapKitCampusView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text("There is no connected route between the selected nodes.")
+        }
+        .sheet(isPresented: $showPOV) {
+            // Build the ordered list of image names along the route
+            let imageNames: [String] = routePath.compactMap { $0.imageName }
+            if imageNames.isEmpty {
+                Text("No image available for POV")
+                    .padding()
+            } else {
+                POVWalkthroughView(imageNames: imageNames) {
+                    showPOV = false
+                }
+                .ignoresSafeArea()
+            }
         }
     }
 
@@ -268,6 +355,10 @@ struct MapKitCampusView: View {
     }
 
     private func endNavigation() {
+        autoplayTask?.cancel()
+        autoplayTask = nil
+        originNode = nil
+        destinationNode = nil
         withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
             isNavigating = false
         }
@@ -290,6 +381,30 @@ struct MapKitCampusView: View {
             focusOn(routePath[currentStepIndex])
         } else {
             endNavigation()
+        }
+    }
+    
+    private func startAutoWalk() {
+        autoplayTask?.cancel()
+        autoplayTask = Task { @MainActor in
+            guard isNavigating else { return }
+            // Immediately focus on the first step
+            if currentStepIndex < routePath.count {
+                focusOn(routePath[currentStepIndex])
+            }
+            while isNavigating {
+                // Wait 1 second between steps
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                guard isNavigating else { break }
+                if currentStepIndex + 1 < routePath.count {
+                    currentStepIndex += 1
+                    focusOn(routePath[currentStepIndex])
+                } else {
+                    // End after reaching the last node
+                    endNavigation()
+                    break
+                }
+            }
         }
     }
 
@@ -577,4 +692,81 @@ struct MapKitCampusView: View {
             .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
         }
     }
+
+    struct POVWalkthroughView: View {
+        let imageNames: [String]
+        let onClose: () -> Void
+        @State private var index: Int = 0
+
+        var body: some View {
+            ZStack {
+                PanoramaView(imageName: imageNames[index])
+                    .id(imageNames[index])
+                VStack {
+                    HStack {
+                        Spacer()
+                        Button(action: onClose) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 28, weight: .bold))
+                                .foregroundColor(.white)
+                                .shadow(color: .black.opacity(0.4), radius: 6, y: 3)
+                        }
+                    }
+                    .padding(.top, 16)
+                    .padding(.trailing, 16)
+                    Spacer()
+                }
+                // Optional label for current image name
+                VStack {
+                    Spacer()
+                    if let name = imageNames[safe: index] {
+                        Text(name)
+                            .font(.system(size: 14, weight: .semibold))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(.ultraThinMaterial)
+                            .clipShape(Capsule())
+                            .padding(.bottom, 20)
+                    }
+                }
+                // Manual controls: Previous / Next
+                VStack {
+                    Spacer()
+                    HStack {
+                        Button {
+                            if index > 0 { index -= 1 }
+                        } label: {
+                            Label("Previous", systemImage: "chevron.left")
+                                .font(.system(size: 14, weight: .semibold))
+                        }
+                        .buttonStyle(.bordered)
+
+                        Spacer()
+
+                        Button {
+                            if index + 1 < imageNames.count {
+                                index += 1
+                            }
+                        } label: {
+                            Label("Next", systemImage: "chevron.right")
+                                .font(.system(size: 14, weight: .semibold))
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(.ultraThinMaterial)
+                    .clipShape(Capsule())
+                    .padding(.bottom, 24)
+                }
+            }
+        }
+    }
 }
+
+private extension Array {
+    subscript(safe index: Int) -> Element? {
+        indices.contains(index) ? self[index] : nil
+    }
+}
+

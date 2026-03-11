@@ -39,6 +39,10 @@ struct CampusMapView: UIViewRepresentable {
             CampusNodeAnnotationView.self,
             forAnnotationViewWithReuseIdentifier: CampusNodeAnnotationView.reuseID
         )
+        mapView.register(
+            RouteImageAnnotationView.self,
+            forAnnotationViewWithReuseIdentifier: RouteImageAnnotationView.reuseID
+        )
 
         mapView.addOverlay(overlay)
 
@@ -108,6 +112,11 @@ struct CampusMapView: UIViewRepresentable {
         }
 
         func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+            if let routeImageAnn = annotation as? RouteImageAnnotation {
+                let view = mapView.dequeueReusableAnnotationView(withIdentifier: RouteImageAnnotationView.reuseID, for: routeImageAnn) as! RouteImageAnnotationView
+                return view
+            }
+
             guard annotation is CampusNodeAnnotation else { return nil }
 
             let view = mapView.dequeueReusableAnnotationView(

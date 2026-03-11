@@ -23,7 +23,7 @@ final class CampusNodeAnnotationView: MKAnnotationView {
 
     private func configure() {
         frame = CGRect(x: 0, y: 0, width: 18, height: 18)
-        centerOffset = CGPoint(x: 0, y: -9)
+        centerOffset = .zero
         backgroundColor = .clear
         
         isEnabled = true
