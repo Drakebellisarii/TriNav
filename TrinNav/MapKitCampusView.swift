@@ -4,6 +4,7 @@ import MapKit
 struct MapKitCampusView: View {
 
     let nodes: [MapNode]
+    let locationEnabled: Bool
 
     @State private var originNode: MapNode? = nil
     @State private var destinationNode: MapNode? = nil
@@ -20,6 +21,11 @@ struct MapKitCampusView: View {
     @State private var walkingSpeedResult = WalkingSpeedResult(speedMetersPerSecond: 1.4, source: .default)
     @State private var routeDistanceMeters: Double = 0
 
+    // Location-aware state
+    @StateObject private var locationManager = LocationManager()
+    @State private var destinationSearchText = ""
+    @State private var showSearchSuggestions = false
+
     private let defaultRegion = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 41.7480, longitude: -72.6899),
         span: MKCoordinateSpan(latitudeDelta: 0.010, longitudeDelta: 0.010)
@@ -27,12 +33,29 @@ struct MapKitCampusView: View {
 
     @State private var region: MKCoordinateRegion
 
-    init(nodes: [MapNode]) {
+    init(nodes: [MapNode], locationEnabled: Bool) {
         self.nodes = nodes
+        self.locationEnabled = locationEnabled
         _region = State(initialValue: MKCoordinateRegion(
             center: CLLocationCoordinate2D(latitude: 41.7480, longitude: -72.6899),
             span: MKCoordinateSpan(latitudeDelta: 0.010, longitudeDelta: 0.010)
         ))
+    }
+
+    // Nodes visible on the map:
+    // - location-approved: only nodes on the active route (empty when no route)
+    // - location-denied: all nodes (existing behaviour)
+    private var visibleNodes: [MapNode] {
+        locationEnabled ? routePath : nodes
+    }
+
+    // Named nodes that can be searched as destinations
+    private var searchSuggestions: [MapNode] {
+        guard !destinationSearchText.isEmpty else { return [] }
+        return nodes.filter {
+            guard let name = $0.name else { return false }
+            return name.localizedCaseInsensitiveContains(destinationSearchText)
+        }
     }
 
     // Trinity Branding
@@ -155,10 +178,12 @@ struct MapKitCampusView: View {
             ZStack {
                 CampusMapView(
                     overlay: campusOverlay,
-                    nodes: nodes,
+                    nodes: visibleNodes,
                     route: routePath,
                     region: $region,
                     onNodeTap: { node in
+                        // Node tap only used for location-denied manual selection
+                        guard !locationEnabled else { return }
                         if originNode == nil {
                             originNode = node
                         } else if destinationNode == nil && node.id != originNode?.id {
@@ -175,50 +200,156 @@ struct MapKitCampusView: View {
                 )
                 .ignoresSafeArea(edges: .bottom)
 
-                // Navigation controls bar (start/end selector + Go button)
+                // Navigation controls and search bar
                 VStack(spacing: 8) {
+                    // Search bar – shown for all users as destination input
                     HStack(spacing: 8) {
-                        Text("Start:")
-                            .font(.system(size: 12, weight: .semibold))
+                        Image(systemName: "magnifyingglass")
+                            .foregroundColor(.white.opacity(0.7))
+                            .font(.system(size: 14))
+
+                        TextField("Search destination…", text: $destinationSearchText)
+                            .font(.system(size: 14))
                             .foregroundColor(.white)
-                        Text(originNode?.name ?? (originNode != nil ? "Node \(originNode!.id)" : "Tap a node"))
-                            .font(.system(size: 12))
-                            .foregroundColor(.white)
-                        Spacer()
-                        Text("End:")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(.white)
-                        Text(destinationNode?.name ?? (destinationNode != nil ? "Node \(destinationNode!.id)" : "Tap a node"))
-                            .font(.system(size: 12))
-                            .foregroundColor(.white)
-                        Spacer(minLength: 8)
-                        Button(action: {
-                            if let o = originNode, let d = destinationNode {
-                                let path = shortestPath(from: o, to: d, nodes: nodes)
-                                guard path.count >= 2 else {
-                                    showNoPathAlert = true
-                                    return
-                                }
-                                routePath = path
-                                currentStepIndex = 0
-                                routeDistanceMeters = totalRouteDistance(path)
-                                fitRoute(path)
+                            .tint(.white)
+                            .submitLabel(.search)
+                            .onTapGesture { showSearchSuggestions = true }
+                            .onChange(of: destinationSearchText) { _ in
+                                showSearchSuggestions = !destinationSearchText.isEmpty
                             }
-                        }) {
-                            Text("Go")
-                                .font(.system(size: 14, weight: .bold))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 8)
-                                .background((originNode != nil && destinationNode != nil) ? trinityGold : Color.gray)
-                                .clipShape(Capsule())
+
+                        if !destinationSearchText.isEmpty {
+                            Button {
+                                destinationSearchText = ""
+                                showSearchSuggestions = false
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.white.opacity(0.7))
+                                    .font(.system(size: 14))
+                            }
                         }
-                        .disabled(!(originNode != nil && destinationNode != nil))
                     }
                     .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
+                    .padding(.vertical, 9)
                     .background(Color.black.opacity(0.45))
                     .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                    // Search suggestions dropdown
+                    if showSearchSuggestions && !searchSuggestions.isEmpty {
+                        ScrollView {
+                            VStack(spacing: 0) {
+                                ForEach(searchSuggestions) { node in
+                                    Button {
+                                        destinationNode = node
+                                        destinationSearchText = node.name ?? ""
+                                        showSearchSuggestions = false
+                                        if locationEnabled {
+                                            computeRouteIfReady()
+                                        }
+                                    } label: {
+                                        HStack {
+                                            Image(systemName: "mappin.circle.fill")
+                                                .foregroundColor(trinityGold)
+                                                .font(.system(size: 14))
+                                            Text(node.name ?? "")
+                                                .font(.system(size: 14, weight: .medium))
+                                                .foregroundColor(.primary)
+                                            Spacer()
+                                        }
+                                        .padding(.horizontal, 14)
+                                        .padding(.vertical, 10)
+                                    }
+                                    .buttonStyle(.plain)
+                                    Divider().padding(.horizontal, 14)
+                                }
+                            }
+                        }
+                        .frame(maxHeight: 200)
+                        .background(.ultraThinMaterial)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
+                    }
+
+                    // Manual start/end selector + Go – only for location-denied users
+                    if !locationEnabled {
+                        HStack(spacing: 8) {
+                            Text("Start:")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.white)
+                            Text(originNode?.name ?? (originNode != nil ? "Node \(originNode!.id)" : "Tap a node"))
+                                .font(.system(size: 12))
+                                .foregroundColor(.white)
+                            Spacer()
+                            Text("End:")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.white)
+                            Text(destinationNode?.name ?? (destinationNode != nil ? "Node \(destinationNode!.id)" : "Tap a node"))
+                                .font(.system(size: 12))
+                                .foregroundColor(.white)
+                            Spacer(minLength: 8)
+                            Button(action: {
+                                if let o = originNode, let d = destinationNode {
+                                    let path = shortestPath(from: o, to: d, nodes: nodes)
+                                    guard path.count >= 2 else {
+                                        showNoPathAlert = true
+                                        return
+                                    }
+                                    routePath = path
+                                    currentStepIndex = 0
+                                    routeDistanceMeters = totalRouteDistance(path)
+                                    fitRoute(path)
+                                }
+                            }) {
+                                Text("Go")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 8)
+                                    .background((originNode != nil && destinationNode != nil) ? trinityGold : Color.gray)
+                                    .clipShape(Capsule())
+                            }
+                            .disabled(!(originNode != nil && destinationNode != nil))
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color.black.opacity(0.45))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+
+                    // For location-approved users: show origin + destination summary with Go button
+                    if locationEnabled {
+                        HStack(spacing: 8) {
+                            Image(systemName: "location.fill")
+                                .font(.system(size: 11))
+                                .foregroundColor(trinityGold)
+                            Text(originNode.map { $0.name ?? "Node \($0.id)" } ?? "Locating…")
+                                .font(.system(size: 12))
+                                .foregroundColor(.white)
+                                .lineLimit(1)
+                            Image(systemName: "arrow.right")
+                                .font(.system(size: 11))
+                                .foregroundColor(.white.opacity(0.6))
+                            Text(destinationNode.map { $0.name ?? "Node \($0.id)" } ?? "Search above")
+                                .font(.system(size: 12))
+                                .foregroundColor(.white)
+                                .lineLimit(1)
+                            Spacer(minLength: 4)
+                            Button(action: computeRouteIfReady) {
+                                Text("Go")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 8)
+                                    .background((originNode != nil && destinationNode != nil) ? trinityGold : Color.gray)
+                                    .clipShape(Capsule())
+                            }
+                            .disabled(!(originNode != nil && destinationNode != nil))
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color.black.opacity(0.45))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
 
                     if !routePath.isEmpty {
                         routeETABanner
@@ -357,6 +488,16 @@ struct MapKitCampusView: View {
         .task {
             await speedService.requestAuthorization()
             walkingSpeedResult = await speedService.fetchPredictedWalkingSpeed()
+            if locationEnabled {
+                locationManager.start()
+            }
+        }
+        .onChange(of: locationManager.userLocation) { newLocation in
+            guard locationEnabled, let loc = newLocation else { return }
+            let nearest = nearestNode(to: loc, in: nodes)
+            if nearest?.id != originNode?.id {
+                originNode = nearest
+            }
         }
         .alert("No connected path", isPresented: $showNoPathAlert) {
             Button("OK", role: .cancel) {}
@@ -485,6 +626,33 @@ struct MapKitCampusView: View {
 
     private func zoomIn()  { zoom(by: 0.7) }
     private func zoomOut() { zoom(by: 1.3) }
+
+    // MARK: – Location helpers
+
+    /// Computes and sets the route when both origin and destination are known.
+    private func computeRouteIfReady() {
+        guard let o = originNode, let d = destinationNode else { return }
+        let path = shortestPath(from: o, to: d, nodes: nodes)
+        guard path.count >= 2 else {
+            showNoPathAlert = true
+            return
+        }
+        routePath = path
+        currentStepIndex = 0
+        routeDistanceMeters = totalRouteDistance(path)
+        fitRoute(path)
+    }
+
+    /// Returns the node with coordinates closest to the given CLLocation.
+    private func nearestNode(to location: CLLocation, in nodes: [MapNode]) -> MapNode? {
+        nodes
+            .filter { $0.latitude != nil && $0.longitude != nil }
+            .min(by: { a, b in
+                let aLoc = CLLocation(latitude: a.latitude!, longitude: a.longitude!)
+                let bLoc = CLLocation(latitude: b.latitude!, longitude: b.longitude!)
+                return location.distance(from: aLoc) < location.distance(from: bLoc)
+            })
+    }
 
     // MARK: – ETA helpers
 
